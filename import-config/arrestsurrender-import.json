@@ -1,0 +1,34 @@
+{
+  "table_identifier": "53343000000037813",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "CaseMasterID",
+      "reference_column": "CaseMasterID"
+    },
+    {
+      "local_column": "ArrestSurrenderStateId",
+      "reference_column": "StateID"
+    },
+    {
+      "local_column": "ArrestSurrenderDistrictId",
+      "reference_column": "DistrictID"
+    },
+    {
+      "local_column": "PoliceStationID",
+      "reference_column": "UnitID"
+    },
+    {
+      "local_column": "IOID",
+      "reference_column": "EmployeeID"
+    },
+    {
+      "local_column": "CourtID",
+      "reference_column": "CourtID"
+    },
+    {
+      "local_column": "AccusedMasterID",
+      "reference_column": "AccusedMasterID"
+    }
+  ]
+}

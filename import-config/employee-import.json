@@ -1,0 +1,22 @@
+{
+  "table_identifier": "53343000000040319",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "DistrictID",
+      "reference_column": "DistrictID"
+    },
+    {
+      "local_column": "UnitID",
+      "reference_column": "UnitID"
+    },
+    {
+      "local_column": "RankID",
+      "reference_column": "RankID"
+    },
+    {
+      "local_column": "DesignationID",
+      "reference_column": "DesignationID"
+    }
+  ]
+}

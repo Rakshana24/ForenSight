@@ -1,0 +1,14 @@
+{
+  "table_identifier": "53343000000022792",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "StateID",
+      "reference_column": "StateID"
+    },
+    {
+      "local_column": "DistrictID",
+      "reference_column": "DistrictID"
+    }
+  ]
+}

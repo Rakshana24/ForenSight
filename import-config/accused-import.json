@@ -1,0 +1,10 @@
+{
+  "table_identifier": "53343000000037452",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "CaseMasterID",
+      "reference_column": "CaseMasterID"
+    }
+  ]
+}

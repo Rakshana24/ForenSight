@@ -1,0 +1,14 @@
+{
+  "table_identifier": "53343000000042402",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "CaseMasterID",
+      "reference_column": "CaseMasterID"
+    },
+    {
+      "local_column": "PolicePersonID",
+      "reference_column": "EmployeeID"
+    }
+  ]
+}

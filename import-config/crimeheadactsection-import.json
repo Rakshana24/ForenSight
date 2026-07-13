@@ -1,0 +1,14 @@
+{
+  "table_identifier": "53343000000029768",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "CrimeHeadID",
+      "reference_column": "CrimeHeadID"
+    },
+    {
+      "local_column": "ActCode",
+      "reference_column": "ActCode"
+    }
+  ]
+}

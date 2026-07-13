@@ -1,0 +1,10 @@
+{
+  "table_identifier": "53343000000036153",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "StateID",
+      "reference_column": "StateID"
+    }
+  ]
+}

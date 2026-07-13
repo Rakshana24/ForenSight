@@ -1,0 +1,22 @@
+{
+  "table_identifier": "53343000000035369",
+  "operation": "insert",
+  "fk_mapping": [
+    {
+      "local_column": "CaseMasterID",
+      "reference_column": "CaseMasterID"
+    },
+    {
+      "local_column": "OccupationID",
+      "reference_column": "OccupationID"
+    },
+    {
+      "local_column": "ReligionID",
+      "reference_column": "ReligionID"
+    },
+    {
+      "local_column": "CasteID",
+      "reference_column": "caste_master_id"
+    }
+  ]
+}
