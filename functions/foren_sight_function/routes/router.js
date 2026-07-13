@@ -6,6 +6,8 @@
 const url = require('url');
 const CrimeController = require('../controllers/crimeController');
 const AccusedController = require('../controllers/accusedController');
+const VictimController = require('../controllers/victimController');
+const OfficerController = require('../controllers/officerController');
 const handleError = require('../middleware/errorHandler');
 const { NotFoundError } = require('../shared/middleware/errorSystem');
 
@@ -40,6 +42,12 @@ async function routeDispatcher(req, res, catalystApp, logger) {
     } else if (path === '/criminal' && method === 'GET') {
       const accusedController = new AccusedController(catalystApp);
       await accusedController.handleSearchCriminal(req, res, logger);
+    } else if (path === '/victim' && method === 'GET') {
+      const victimController = new VictimController(catalystApp);
+      await victimController.handleSearchVictim(req, res, logger);
+    } else if (path === '/officer' && method === 'GET') {
+      const officerController = new OfficerController(catalystApp);
+      await officerController.handleSearchOfficer(req, res, logger);
     } else {
       throw new NotFoundError(`The requested endpoint '${method} ${path}' does not exist.`);
     }
