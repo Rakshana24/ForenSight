@@ -1,0 +1,13 @@
+{
+  "name": "crime_search",
+  "version": "1.0.0",
+  "description": "ForenSight Crime Search Module (Module 1) Serverless Advanced I/O Function",
+  "main": "index.js",
+  "dependencies": {
+    "zcatalyst-sdk-node": "^3.4.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
