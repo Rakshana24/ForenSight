@@ -2,7 +2,7 @@
 	"name": "foren_sight_function",
 	"version": "1.0.0",
 	"main": "index.js",
-	"author": "rakshanarakshana672@gmail.com",
+	"author": "Aathirai",
 	"dependencies": {
 		"zcatalyst-sdk-node": "latest"
 	}
