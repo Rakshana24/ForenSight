@@ -9,6 +9,7 @@ const victimHandler = require('./routes/victim.route');
 const investigatingOfficerHandler = require('./routes/investigatingOfficer.route');
 const unitHandler = require('./routes/unit.route');
 const courtHandler = require('./routes/court.route');
+const chatHandler = require('./routes/chat.route');
 
 const routes = {
   'GET /health': healthHandler,
@@ -18,7 +19,12 @@ const routes = {
   'GET /victim': victimHandler,
   'GET /investigating-officer': investigatingOfficerHandler,
   'GET /unit': unitHandler,
-  'GET /court': courtHandler
+  'GET /court': courtHandler,
+  
+  // Feature 10A Endpoints & Required Aliases
+  'POST /chat': chatHandler,
+  'GET /fir': caseHandler,
+  'GET /criminal': accusedHandler
 };
 
 function dispatch(req, res) {

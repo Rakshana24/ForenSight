@@ -1,0 +1,23 @@
+'use strict';
+
+const ChatController = require('../controllers/chat.controller');
+const { parseRequestBody } = require('../utils/bodyParser');
+const { sendError } = require('../utils/response');
+
+const chatController = new ChatController();
+
+async function chatHandler(req, res) {
+  if (req.method !== 'POST') {
+    return sendError(res, 405, `Method Not Allowed: Expected POST, received ${req.method}.`);
+  }
+
+  try {
+    const parsedBody = await parseRequestBody(req);
+    await chatController.handleChat(req, res, parsedBody);
+  } catch (error) {
+    console.error('[chatHandler] Error processing POST request body:', error);
+    return sendError(res, 400, `Bad Request: ${error.message || 'Could not parse request body.'}`);
+  }
+}
+
+module.exports = chatHandler;

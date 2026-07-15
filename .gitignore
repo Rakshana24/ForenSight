@@ -2,3 +2,6 @@ dataset/
 node_modules/
 .build/
 *.log
+.env
+.env.*
+!.env.example
