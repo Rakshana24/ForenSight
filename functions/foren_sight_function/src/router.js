@@ -10,6 +10,7 @@ const investigatingOfficerHandler = require('./routes/investigatingOfficer.route
 const unitHandler = require('./routes/unit.route');
 const courtHandler = require('./routes/court.route');
 const chatHandler = require('./routes/chat.route');
+const conversationRouteHandler = require('./routes/conversation.route');
 
 const routes = {
   'GET /health': healthHandler,
@@ -24,17 +25,49 @@ const routes = {
   // Feature 10A Endpoints & Required Aliases
   'POST /chat': chatHandler,
   'GET /fir': caseHandler,
-  'GET /criminal': accusedHandler
+  'GET /criminal': accusedHandler,
+
+  // Feature 12A Persistent History Endpoints
+  'POST /conversation/start': conversationRouteHandler,
+  'GET /conversations': conversationRouteHandler,
+  'GET /conversation/:conversationId': conversationRouteHandler,
+  'POST /conversation/:conversationId/continue': conversationRouteHandler,
+  'DELETE /conversation/:conversationId': conversationRouteHandler
 };
 
-function dispatch(req, res) {
+async function dispatch(req, res) {
   console.log('METHOD:', req.method, 'URL:', JSON.stringify(req.url));
   const parsedUrl = req.url.split('?')[0];
-  const key = `${req.method} ${parsedUrl}`;
-  const handler = routes[key];
+  
+  // Try exact lookup first
+  const exactKey = `${req.method} ${parsedUrl}`;
+  let handler = routes[exactKey];
+
+  // Fallback: parameterized regex path matching
+  if (!handler) {
+    for (const routeKey of Object.keys(routes)) {
+      const [method, routePath] = routeKey.split(' ');
+      if (method !== req.method) continue;
+
+      // Map parameters like :conversationId to regex capture groups
+      const regexPath = routePath.replace(/:[a-zA-Z0-9_]+/g, '([^/]+)');
+      const regex = new RegExp(`^${regexPath}$`);
+      const match = parsedUrl.match(regex);
+
+      if (match) {
+        req.params = req.params || {};
+        const paramNames = (routePath.match(/:[a-zA-Z0-9_]+/g) || []).map(p => p.slice(1));
+        paramNames.forEach((name, i) => {
+          req.params[name] = match[i + 1];
+        });
+        handler = routes[routeKey];
+        break;
+      }
+    }
+  }
 
   if (handler) {
-    handler(req, res);
+    await handler(req, res);
   } else {
     sendError(res, 404, 'Route not found');
   }

@@ -253,9 +253,10 @@ class ChatService {
    * @param {string} baseUrl - Base URL for loopback requests
    * @param {string} [sessionId] - Session ID (default: 'default-session')
    * @param {object} [req] - HTTP request object
+   * @param {string|number} [conversationId] - Active conversation ROWID to persist messages
    * @returns {Promise<string>} Human-readable formatted reply
    */
-  async processChat(message, baseUrl, sessionId = 'default-session', req) {
+  async processChat(message, baseUrl, sessionId = 'default-session', req, conversationId) {
     // 1. Verify environment configuration
     if (!process.env.GEMINI_API_KEY) {
       const err = new Error('Configuration Error: GEMINI_API_KEY is not defined in the environment variables.');
@@ -280,6 +281,29 @@ class ChatService {
 
     // 3. Fetch session memory
     const session = SessionStore.getSession(sessionId);
+
+    // Validate conversationID ownership if passed
+    let convoRepo = null;
+    let convoService = null;
+    if (conversationId && req) {
+      try {
+        const ConversationRepository = require('../repositories/conversation.repository');
+        const ConversationService = require('./conversation.service');
+        const catalystApp = require('zcatalyst-sdk-node').initialize(req);
+        convoRepo = new ConversationRepository(catalystApp);
+        convoService = new ConversationService(catalystApp);
+
+        const convo = await convoRepo.findConversationById(conversationId);
+        if (!convo || convo.Status !== 'ACTIVE') {
+          return 'Error: Conversation not found.';
+        }
+        if (convo.SessionID !== sessionId) {
+          return 'Error: Unauthorized access to this conversation.';
+        }
+      } catch (e) {
+        console.warn('[ChatService] Could not validate conversation ownership:', e.message);
+      }
+    }
 
     // 4. Handle Pronoun reference without context check
     if (isReferenceWithoutContext(cleanMsg, session)) {
@@ -470,6 +494,46 @@ class ChatService {
       } catch (formatError) {
         console.warn(`[ChatService] Gemini response formatting failed. Falling back to local formatting...`, formatError.message || formatError);
         finalAnswer = formatLocalResponse(intent, apiResponse, session);
+      }
+    }
+
+    // Save to conversation history if active
+    if (conversationId && convoRepo && convoService) {
+      try {
+        // 1. Save user message
+        await convoRepo.createMessage({
+          ConversationID: conversationId,
+          Role: 'user',
+          Message: cleanMsg,
+          MsgTimestamp: new Date().toISOString()
+        });
+
+        // 2. Save assistant response
+        await convoRepo.createMessage({
+          ConversationID: conversationId,
+          Role: 'assistant',
+          Message: finalAnswer,
+          MsgTimestamp: new Date().toISOString()
+        });
+
+        // 3. Update title and ContextMetadata
+        const existingMsgs = await convoRepo.listMessages(conversationId);
+        const isFirstMsg = existingMsgs.length <= 2; // user message + assistant response
+
+        const updates = {
+          ROWID: conversationId,
+          ContextMetadata: convoService.minifyContext(session)
+        };
+
+        if (isFirstMsg) {
+          const title = convoService.generateTitle(cleanMsg);
+          updates.Title = title;
+          console.log(`[ChatService] Automatically set conversation title to: ${title}`);
+        }
+
+        await convoRepo.updateConversation(updates);
+      } catch (dbErr) {
+        console.error('[ChatService] Error saving conversation history:', dbErr.message);
       }
     }
 

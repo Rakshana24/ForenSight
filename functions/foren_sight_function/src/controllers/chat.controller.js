@@ -17,7 +17,7 @@ class ChatController {
    */
   async handleChat(req, res, parsedBody) {
     try {
-      const { message, sessionId } = parsedBody;
+      const { message, sessionId, conversationId } = parsedBody;
 
       if (!message) {
         return sendError(res, 400, 'Bad Request: "message" field is required in request body.');
@@ -28,7 +28,7 @@ class ChatController {
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}/server/foren_sight_function`;
 
-      const responseText = await this.chatService.processChat(message, baseUrl, sessionId, req);
+      const responseText = await this.chatService.processChat(message, baseUrl, sessionId, req, conversationId);
 
       return sendJSON(res, 200, {
         response: responseText
