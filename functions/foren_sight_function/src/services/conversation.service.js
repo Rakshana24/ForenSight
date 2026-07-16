@@ -262,6 +262,52 @@ class ConversationService {
       Status: 'DELETED'
     });
   }
+
+  /**
+   * Retrieves conversation details and all its messages for PDF export,
+   * enforcing 403 on security mismatch and 404 if deleted/not found.
+   * 
+   * @param {string|number} conversationId - Conversation row ID
+   * @param {string} sessionId - User session ID
+   * @returns {Promise<object>} Export conversation payload
+   */
+  async getConversationForExport(conversationId, sessionId) {
+    if (!conversationId) {
+      const error = new Error('Bad Request: ConversationID is required.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const convo = await this.repository.findConversationById(conversationId);
+    if (!convo || convo.Status !== 'ACTIVE') {
+      const error = new Error('Conversation not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Security Check - 403 Forbidden on mismatch for export
+    if (convo.SessionID !== sessionId) {
+      const error = new Error('Security Mismatch: Session does not own the conversation.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const rawMsgs = await this.repository.listMessages(conversationId);
+    const messages = rawMsgs.map(m => ({
+      messageId: m.ROWID,
+      role: m.Role,
+      message: m.Message,
+      timestamp: m.MsgTimestamp
+    }));
+
+    return {
+      conversationId: convo.ROWID,
+      sessionId: convo.SessionID,
+      title: convo.Title,
+      createdTime: convo.CREATEDTIME,
+      messages
+    };
+  }
 }
 
 module.exports = ConversationService;

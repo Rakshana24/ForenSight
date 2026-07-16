@@ -31,6 +31,7 @@ const routes = {
   'POST /conversation/start': conversationRouteHandler,
   'GET /conversations': conversationRouteHandler,
   'GET /conversation/:conversationId': conversationRouteHandler,
+  'GET /conversation/:conversationId/export/pdf': conversationRouteHandler,
   'POST /conversation/:conversationId/continue': conversationRouteHandler,
   'DELETE /conversation/:conversationId': conversationRouteHandler
 };

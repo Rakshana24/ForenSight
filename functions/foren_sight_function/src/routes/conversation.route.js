@@ -25,6 +25,11 @@ async function conversationRouteHandler(req, res) {
       return await controller.handleListConversations(req, res);
     }
     
+    // 3a. GET /conversation/:conversationId/export/pdf
+    if (method === 'GET' && parsedUrl.startsWith('/conversation/') && parsedUrl.endsWith('/export/pdf')) {
+      return await controller.handleExportConversationPDF(req, res);
+    }
+
     // 3. GET /conversation/:conversationId
     if (method === 'GET' && parsedUrl.startsWith('/conversation/') && !parsedUrl.endsWith('/continue')) {
       return await controller.handleGetConversation(req, res);

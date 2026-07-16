@@ -141,6 +141,40 @@ class ConversationController {
       return sendError(res, code, error.message || 'Internal Server Error deleting conversation.');
     }
   }
+
+  /**
+   * GET /conversation/:conversationId/export/pdf
+   */
+  async handleExportConversationPDF(req, res) {
+    try {
+      const parsedUrl = url.parse(req.url, true);
+      const { sessionId } = parsedUrl.query;
+      const { conversationId } = req.params || {};
+
+      if (!sessionId) {
+        return sendError(res, 400, 'Bad Request: "sessionId" query parameter is required.');
+      }
+
+      const service = this.getService(req);
+      const conversationData = await service.getConversationForExport(conversationId, sessionId);
+
+      // Dynamically generate the PDF using the pdfGenerator utility
+      const { generatePDF } = require('../utils/pdfGenerator');
+      const pdfBuffer = await generatePDF(conversationData);
+
+      // Send the dynamic PDF response directly as downloadable attachment
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Conversation_${conversationId}.pdf"`,
+        'Content-Length': pdfBuffer.length
+      });
+      return res.end(pdfBuffer);
+    } catch (error) {
+      console.error('[ConversationController] Error exporting conversation PDF:', error);
+      const code = error.statusCode || 500;
+      return sendError(res, code, error.message || 'Internal Server Error exporting conversation PDF.');
+    }
+  }
 }
 
 module.exports = ConversationController;
