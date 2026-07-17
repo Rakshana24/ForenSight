@@ -6,6 +6,7 @@ import ChatHeader from './components/Layout/ChatHeader';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './pages/Dashboard';
 import ChatPage from './pages/Chat';
+import Intelligence from './pages/Intelligence';
 import ErrorAlert from './components/Common/ErrorAlert';
 
 // Create simple professional government dashboard theme
@@ -118,6 +119,7 @@ const MainLayout: React.FC = () => {
               <Route path="/chat/:conversationId" element={<ChatRouteWrapper />} />
               {/* Dashboard is moved to a separate route */}
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/intelligence" element={<Intelligence />} />
             </Routes>
           </Box>
         </Box>

@@ -113,6 +113,38 @@ const Sidebar: React.FC = () => {
           />
         </ListItemButton>
 
+        {/* Intelligence Link */}
+        <ListItemButton
+          selected={location.pathname === '/intelligence'}
+          onClick={() => navigate('/intelligence')}
+          sx={{
+            borderRadius: '6px',
+            py: 1,
+            px: 1.5,
+            bgcolor: location.pathname === '/intelligence' ? '#eff6ff' : 'transparent',
+            border: '1px solid',
+            borderColor: location.pathname === '/intelligence' ? '#3b82f6' : '#e5e7eb',
+            '&.Mui-selected': {
+              bgcolor: '#eff6ff',
+              '&:hover': {
+                bgcolor: '#dbeafe',
+              }
+            },
+            '&:hover': {
+              bgcolor: '#f8fafc',
+            }
+          }}
+        >
+          <SearchIcon fontSize="small" color={location.pathname === '/intelligence' ? 'primary' : 'action'} sx={{ mr: 1.5 }} />
+          <ListItemText
+            primary={
+              <Typography variant="body2" fontWeight="bold" color={location.pathname === '/intelligence' ? 'primary.main' : 'text.primary'}>
+                Intelligence
+              </Typography>
+            }
+          />
+        </ListItemButton>
+
         {/* Start New Chat Button */}
         <Button
           variant="contained"
