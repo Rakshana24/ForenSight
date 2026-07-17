@@ -27,8 +27,7 @@ const ChatHeader: React.FC = () => {
             <Typography
               variant="h6"
               color="primary"
-              fontWeight="bold"
-              sx={{ fontSize: '1.2rem', lineHeight: 1.2, letterSpacing: 0.5 }}
+              sx={{ fontSize: '1.2rem', lineHeight: 1.2, letterSpacing: 0.5, fontWeight: 'bold' }}
             >
               ForenSight
             </Typography>

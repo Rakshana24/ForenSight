@@ -78,10 +78,10 @@ const Intelligence: React.FC = () => {
 
   return (
     <Box sx={{ p: 4, height: '100%', overflowY: 'auto' }}>
-      <Typography variant="h4" mb={1}>
+      <Typography variant="h4" sx={{ mb: 1 }}>
         Criminal Relationship Graph
       </Typography>
-      <Typography variant="body1" color="text.secondary" mb={4}>
+      <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4 }}>
         Discover and view relationships between entities inside the crime database.
       </Typography>
 
@@ -176,10 +176,10 @@ const Intelligence: React.FC = () => {
           <Grid container spacing={3}>
             {/* Case Information */}
           {data.case && Object.keys(data.case).length > 0 && (
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom color="primary.main">
+                  <Typography variant="h6" sx={{ mb: 1 }} color="primary.main">
                     Case Information
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
@@ -199,7 +199,7 @@ const Intelligence: React.FC = () => {
 
           {/* Investigating Officer */}
           {data.officer && Object.keys(data.officer).length > 0 && (
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom color="primary.main">
@@ -218,7 +218,7 @@ const Intelligence: React.FC = () => {
 
           {/* Police Unit */}
           {data.unit && Object.keys(data.unit).length > 0 && (
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom color="primary.main">
@@ -234,7 +234,7 @@ const Intelligence: React.FC = () => {
 
           {/* Court */}
           {data.court && Object.keys(data.court).length > 0 && (
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom color="primary.main">
@@ -249,7 +249,7 @@ const Intelligence: React.FC = () => {
           )}
 
           {/* Victims */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom color="primary.main">
@@ -271,7 +271,7 @@ const Intelligence: React.FC = () => {
           </Grid>
 
           {/* Accused */}
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom color="primary.main">
@@ -294,7 +294,7 @@ const Intelligence: React.FC = () => {
 
           {/* Relationship Insights */}
           {data.relationshipInsights && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ mt: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                 <CardContent>
                   <Typography variant="h5" gutterBottom color="primary.dark">
@@ -314,17 +314,17 @@ const Intelligence: React.FC = () => {
                   <Grid container spacing={3}>
                     {/* Repeat Offenders */}
                     {data.relationshipInsights.repeatOffenders && data.relationshipInsights.repeatOffenders.length > 0 && (
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle1" fontWeight="bold" color="error.main" gutterBottom>
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'error.main' }} gutterBottom>
                           Repeat Offenders
                         </Typography>
                         {data.relationshipInsights.repeatOffenders.map((offender, idx) => (
                           <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb' }}>
                             <Typography variant="body2"><strong>Name:</strong> {offender.name}</Typography>
                             <Typography variant="body2"><strong>Total FIRs:</strong> {offender.totalFIRs}</Typography>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>Related Cases:</Typography>
+                            <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>Related Cases:</Typography>
                             {offender.relatedCases.map((rc: any, cidx: number) => (
-                              <Typography key={cidx} variant="caption" display="block" color="primary">
+                              <Typography key={cidx} variant="caption" color="primary" sx={{ display: 'block' }}>
                                 - {rc.CrimeNo} (Case ID: {rc.CaseMasterID})
                               </Typography>
                             ))}
@@ -335,17 +335,17 @@ const Intelligence: React.FC = () => {
 
                     {/* Repeat Victims */}
                     {data.relationshipInsights.repeatVictims && data.relationshipInsights.repeatVictims.length > 0 && (
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle1" fontWeight="bold" color="warning.main" gutterBottom>
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'warning.main' }} gutterBottom>
                           Repeat Victims
                         </Typography>
                         {data.relationshipInsights.repeatVictims.map((victim, idx) => (
                           <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb' }}>
                             <Typography variant="body2"><strong>Name:</strong> {victim.name}</Typography>
                             <Typography variant="body2"><strong>Total FIRs:</strong> {victim.totalFIRs}</Typography>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>Related Cases:</Typography>
+                            <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>Related Cases:</Typography>
                             {victim.relatedCases.map((rc: any, cidx: number) => (
-                              <Typography key={cidx} variant="caption" display="block" color="primary">
+                              <Typography key={cidx} variant="caption" color="primary" sx={{ display: 'block' }}>
                                 - {rc.CrimeNo} (Case ID: {rc.CaseMasterID})
                               </Typography>
                             ))}
@@ -356,8 +356,8 @@ const Intelligence: React.FC = () => {
 
                     {/* Officer Cases */}
                     {data.relationshipInsights.relatedOfficerCases && data.relationshipInsights.relatedOfficerCases.length > 0 && (
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle1" fontWeight="bold" color="info.main" gutterBottom>
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'info.main' }} gutterBottom>
                           Other Cases by this Officer
                         </Typography>
                         <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb', maxHeight: 200, overflowY: 'auto' }}>
@@ -372,8 +372,8 @@ const Intelligence: React.FC = () => {
 
                     {/* Unit Cases */}
                     {data.relationshipInsights.relatedUnitCases && data.relationshipInsights.relatedUnitCases.length > 0 && (
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle1" fontWeight="bold" color="success.main" gutterBottom>
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'success.main' }} gutterBottom>
                           Other Cases in this Unit
                         </Typography>
                         <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb', maxHeight: 200, overflowY: 'auto' }}>
@@ -393,11 +393,11 @@ const Intelligence: React.FC = () => {
 
           {/* Organized Crime Detection */}
           {data.organizedCrimeIndicators && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ mt: 2, bgcolor: '#fef2f2', border: '1px solid #fca5a5' }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5" color="error.dark" fontWeight="bold">
+                    <Typography variant="h5" sx={{ color: 'error.dark', fontWeight: 'bold' }}>
                       Organized Crime Detection
                     </Typography>
                     <Chip 
@@ -426,7 +426,7 @@ const Intelligence: React.FC = () => {
                     />
                   </Box>
 
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }} gutterBottom>
                     Detection Indicators:
                   </Typography>
                   <Alert severity="error" sx={{ bgcolor: 'white' }}>
@@ -437,7 +437,7 @@ const Intelligence: React.FC = () => {
 
                   {data.organizedCrimeIndicators.coOffenders && data.organizedCrimeIndicators.coOffenders.length > 0 && (
                     <Box sx={{ mt: 3 }}>
-                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }} gutterBottom>
                         Co-Offender Syndicates
                       </Typography>
                       {data.organizedCrimeIndicators.coOffenders.map((co, idx) => (
@@ -456,7 +456,7 @@ const Intelligence: React.FC = () => {
 
           {/* Criminal Network Visualization */}
           {data.graph && data.graph.nodes.length > 0 && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ mt: 2, height: 800, width: '100%', border: '1px solid #e2e8f0' }}>
                 <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h5" gutterBottom color="primary.dark">

@@ -40,11 +40,11 @@ class ChatController {
       const isQuotaError = error.name === 'QuotaExceededError' || error.status === 503;
 
       if (isConfigError) {
-        return sendError(res, 500, 'Configuration Error: GEMINI_API_KEY is not defined in the environment variables.');
+        return sendError(res, 500, 'Configuration Error: QUICKML_ENDPOINT_URL is not defined in the environment variables.');
       }
 
       if (isQuotaError) {
-        return sendError(res, 503, 'Gemini quota exceeded. Please retry after the suggested delay.');
+        return sendError(res, 503, 'QuickML quota exceeded. Please retry after the suggested delay.');
       }
 
       return sendError(res, 500, error.message || 'Internal Server Error in chat handler.');

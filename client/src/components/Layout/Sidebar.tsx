@@ -45,9 +45,10 @@ const Sidebar: React.FC = () => {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this conversation?')) {
+      const isActive = currentConversation?.conversationId === id;
       await deleteSelectedConversation(id);
-      if (currentConversation?.conversationId === id) {
-        navigate('/');
+      if (isActive) {
+        navigate('/', { replace: true });
       }
     }
   };
@@ -106,7 +107,7 @@ const Sidebar: React.FC = () => {
           <DashboardIcon fontSize="small" color={isDashboardActive ? 'primary' : 'action'} sx={{ mr: 1.5 }} />
           <ListItemText
             primary={
-              <Typography variant="body2" fontWeight="bold" color={isDashboardActive ? 'primary.main' : 'text.primary'}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: isDashboardActive ? 'primary.main' : 'text.primary' }}>
                 System Dashboard
               </Typography>
             }
@@ -138,7 +139,7 @@ const Sidebar: React.FC = () => {
           <SearchIcon fontSize="small" color={location.pathname === '/intelligence' ? 'primary' : 'action'} sx={{ mr: 1.5 }} />
           <ListItemText
             primary={
-              <Typography variant="body2" fontWeight="bold" color={location.pathname === '/intelligence' ? 'primary.main' : 'text.primary'}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: location.pathname === '/intelligence' ? 'primary.main' : 'text.primary' }}>
                 Intelligence
               </Typography>
             }
@@ -203,8 +204,7 @@ const Sidebar: React.FC = () => {
           <Typography
             variant="caption"
             color="text.disabled"
-            fontWeight="bold"
-            sx={{ letterSpacing: 0.8, textTransform: 'uppercase' }}
+            sx={{ letterSpacing: 0.8, textTransform: 'uppercase', fontWeight: 'bold' }}
           >
             Active Files ({filteredConversations.length})
           </Typography>
@@ -288,7 +288,7 @@ const Sidebar: React.FC = () => {
                 >
                   ACTIVE BADGE
                 </Typography>
-                <Typography variant="body2" fontWeight="bold" color="text.primary">
+                <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold' }}>
                   {sessionId}
                 </Typography>
               </Box>

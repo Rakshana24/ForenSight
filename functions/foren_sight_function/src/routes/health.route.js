@@ -1,17 +1,19 @@
 'use strict';
 
 const { sendJSON, sendError } = require('../utils/response');
-const { verifyGeminiConnection } = require('../utils/gemini');
+const { verifyLLMConnection } = require('../utils/llm');
+const catalyst = require('zcatalyst-sdk-node');
 
 async function healthHandler(req, res) {
   try {
-    const geminiStatus = await verifyGeminiConnection();
+    const app = catalyst.initialize(req);
+    const llmStatus = await verifyLLMConnection(app);
     sendJSON(res, 200, {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      gemini: {
+      llm: {
         status: 'connected',
-        message: geminiStatus.message
+        message: llmStatus.message
       }
     });
   } catch (error) {

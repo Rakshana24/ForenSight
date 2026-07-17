@@ -60,6 +60,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const selectConversation = async (id: string) => {
+    setCurrentConversation(null);
     setLoading(true);
     setError(null);
     try {
@@ -84,7 +85,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newConvo = await conversationService.startConversation(sessionId, title);
       await loadConversations();
-      await selectConversation(newConvo.conversationId);
       return newConvo.conversationId;
     } catch (err: any) {
       console.error('Error creating conversation:', err);

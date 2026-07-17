@@ -1,13 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Button, Divider, CircularProgress, Card, CardContent, Grid } from '@mui/material';
+import { Box, Typography, Button, Divider, CircularProgress } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LocalPoliceIcon from '@mui/icons-material/LocalPolice';
-import MessageIcon from '@mui/icons-material/Message';
-import DescriptionIcon from '@mui/icons-material/Description';
-import PersonSearchIcon from '@mui/icons-material/PersonSearch';
-import SecurityIcon from '@mui/icons-material/Security';
 import { useChat } from '../../contexts/ChatContext';
 import ChatBubble from '../../components/Chat/ChatBubble';
 import ChatInput from '../../components/Chat/ChatInput';
@@ -85,7 +81,7 @@ const Chat: React.FC = () => {
             }}
           >
             <Box>
-              <Typography variant="h6" fontWeight="bold" color="text.primary" sx={{ lineHeight: 1.2 }}>
+              <Typography variant="h6" color="text.primary" sx={{ lineHeight: 1.2, fontWeight: 'bold' }}>
                 {currentConversation.title}
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
@@ -185,7 +181,7 @@ const Chat: React.FC = () => {
             {/* Center Logo */}
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
               <LocalPoliceIcon color="primary" sx={{ fontSize: 56 }} />
-              <Typography variant="h4" fontWeight="bold" color="text.primary" sx={{ textAlign: 'center', mt: 1 }}>
+              <Typography variant="h4" color="text.primary" sx={{ textAlign: 'center', mt: 1, fontWeight: 'bold' }}>
                 ForenSight Crime Intelligence
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', maxWidth: 450, mt: 0.5 }}>

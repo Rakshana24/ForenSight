@@ -4,7 +4,6 @@
 	"main": "index.js",
 	"author": "Aathirai",
 	"dependencies": {
-		"@google/genai": "^2.11.0",
 		"dotenv": "^17.4.2",
 		"pdfkit": "^0.19.1",
 		"zcatalyst-sdk-node": "latest"

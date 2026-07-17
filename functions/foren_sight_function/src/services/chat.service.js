@@ -1,13 +1,13 @@
 'use strict';
 
-const { GeminiClient } = require('../llm/gemini.client');
+const { LLMService } = require('./llmService');
 const { getIntentDetectionPrompt, getFormatResponsePrompt } = require('../promptTemplates/chat.prompts');
 const { parseDeterministically } = require('../utils/deterministicParser');
 const SessionStore = require('../utils/sessionStore');
 
 /**
  * Local helper to format database responses into clean human-readable answers
- * when Gemini API is unavailable or quota is exceeded.
+ * when QuickML API is unavailable or quota is exceeded.
  */
 function formatLocalResponse(intent, apiResponse, session) {
   if (!apiResponse) {
@@ -189,14 +189,16 @@ function updateSessionFromApiResponse(sessionId, intent, apiResponse, caseDetail
 
 class ChatService {
   constructor() {
-    this._geminiClient = null;
+    this._llmService = null;
   }
 
-  getGeminiClient() {
-    if (!this._geminiClient) {
-      this._geminiClient = new GeminiClient();
+  getLLMService(req) {
+    if (!this._llmService) {
+      const catalyst = require('zcatalyst-sdk-node');
+      const catalystApp = catalyst.initialize(req);
+      this._llmService = new LLMService(catalystApp);
     }
-    return this._geminiClient;
+    return this._llmService;
   }
 
   /**
@@ -258,8 +260,8 @@ class ChatService {
    */
   async processChat(message, baseUrl, sessionId = 'default-session', req, conversationId) {
     // 1. Verify environment configuration
-    if (!process.env.GEMINI_API_KEY) {
-      const err = new Error('Configuration Error: GEMINI_API_KEY is not defined in the environment variables.');
+    if (!process.env.QUICKML_ENDPOINT_URL) {
+      const err = new Error('Configuration Error: QUICKML_ENDPOINT_URL is not defined in the environment variables.');
       err.name = 'ConfigurationError';
       err.status = 500;
       throw err;
@@ -312,7 +314,7 @@ class ChatService {
 
     let intent = null;
     let parameters = null;
-    let geminiFailed = false;
+    let llmFailed = false;
 
     // Check for case follow-up queries programmatically
     // If the user query is about the police station, officer, court, or FIR details associated with the case,
@@ -339,16 +341,16 @@ class ChatService {
         caseNo: session.lastCaseNo
       };
     } else {
-      // 5. Call Gemini for Intent Detection (with session context injection)
+      // 5. Call LLM for Intent Detection (with session context injection)
       try {
-        const gemini = this.getGeminiClient();
+        const llm = this.getLLMService(req);
         const intentPrompt = getIntentDetectionPrompt(cleanMsg, session);
-        const parsedIntent = await gemini.generateJSON(intentPrompt);
+        const parsedIntent = await llm.generateJSON(intentPrompt);
         intent = parsedIntent.intent;
         parameters = parsedIntent.parameters;
-      } catch (geminiError) {
-        console.warn(`[ChatService] Gemini intent detection failed. Attempting deterministic fallback...`, geminiError.message || geminiError);
-        geminiFailed = true;
+      } catch (llmError) {
+        console.warn(`[ChatService] QuickML intent detection failed. Attempting deterministic fallback...`, llmError.message || llmError);
+        llmFailed = true;
 
         const parsed = parseDeterministically(cleanMsg, session);
         if (parsed) {
@@ -356,12 +358,12 @@ class ChatService {
           intent = parsed.intent;
           parameters = parsed.parameters;
         } else {
-          throw geminiError;
+          throw llmError;
         }
       }
     }
 
-    // Handle Clarifying response from Gemini
+    // Handle Clarifying response from LLM
     if (intent === 'CLARIFY') {
       return 'Could you please specify which FIR, criminal, victim, or officer you are referring to?';
     }
@@ -482,17 +484,17 @@ class ChatService {
     // 8. Update conversation session memory on success
     updateSessionFromApiResponse(sessionId, intent, apiResponse, caseDetails);
 
-    // 9. Format response (Gemini or Local fallback)
+    // 9. Format response (LLM or Local fallback)
     let finalAnswer = '';
-    if (geminiFailed) {
+    if (llmFailed) {
       finalAnswer = formatLocalResponse(intent, apiResponse, session);
     } else {
       try {
-        const gemini = this.getGeminiClient();
+        const llm = this.getLLMService(req);
         const formatPrompt = getFormatResponsePrompt(cleanMsg, apiResponse, session);
-        finalAnswer = await gemini.generateText(formatPrompt);
+        finalAnswer = await llm.generateText(formatPrompt);
       } catch (formatError) {
-        console.warn(`[ChatService] Gemini response formatting failed. Falling back to local formatting...`, formatError.message || formatError);
+        console.warn(`[ChatService] QuickML response formatting failed. Falling back to local formatting...`, formatError.message || formatError);
         finalAnswer = formatLocalResponse(intent, apiResponse, session);
       }
     }

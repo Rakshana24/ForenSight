@@ -42,9 +42,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg }) => {
         <Typography
           variant="subtitle2"
           color={isUser ? 'primary' : 'text.primary'}
-          fontWeight="bold"
           gutterBottom
-          sx={{ fontSize: '0.8rem' }}
+          sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}
         >
           {isUser ? 'User' : 'Assistant'}
         </Typography>
@@ -55,10 +54,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg }) => {
           <Typography
             variant="caption"
             color="text.disabled"
-            display="block"
-            textAlign="right"
-            mt={0.5}
-            sx={{ fontSize: '0.7rem' }}
+            sx={{ fontSize: '0.7rem', display: 'block', textAlign: 'right', mt: 0.5 }}
           >
             {formatTime(msg.timestamp)}
           </Typography>

@@ -13,14 +13,14 @@ const possibleEnvPaths = [
 let envLoaded = false;
 for (const envPath of possibleEnvPaths) {
   const result = dotenv.config({ path: envPath });
-  if (!result.error && process.env.GEMINI_API_KEY) {
+  if (!result.error && process.env.QUICKML_ENDPOINT_URL) {
     envLoaded = true;
     break;
   }
 }
 
 // Log loaded status as required
-console.log(process.env.GEMINI_API_KEY ? "Gemini API Key Loaded Successfully" : "Missing Gemini API Key");
+console.log(process.env.QUICKML_ENDPOINT_URL ? "QuickML Endpoint URL Loaded Successfully" : "Missing QuickML Endpoint URL");
 
 const { dispatch } = require('./src/router');
 

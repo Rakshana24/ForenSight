@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, useParams } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import { ChatProvider, useChat } from './contexts/ChatContext';
 import ChatHeader from './components/Layout/ChatHeader';
@@ -70,13 +70,23 @@ const theme = createTheme({
 
 const ChatRouteWrapper: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const { currentConversation, selectConversation } = useChat();
+  const { currentConversation, selectConversation, conversations, loading } = useChat();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
-    if (conversationId && (!currentConversation || currentConversation.conversationId !== conversationId)) {
-      selectConversation(conversationId);
+    if (conversationId) {
+      // Validate that the conversation exists in the loaded list
+      const exists = conversations.some(c => c.conversationId === conversationId);
+      if (!loading && conversations.length > 0 && !exists) {
+        navigate('/', { replace: true });
+        return;
+      }
+
+      if (!currentConversation || currentConversation.conversationId !== conversationId) {
+        selectConversation(conversationId);
+      }
     }
-  }, [conversationId, currentConversation, selectConversation]);
+  }, [conversationId, currentConversation, selectConversation, conversations, loading, navigate]);
 
   return <ChatPage />;
 };

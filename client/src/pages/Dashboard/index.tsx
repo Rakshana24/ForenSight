@@ -6,8 +6,6 @@ import {
   CardContent,
   Button,
   Typography,
-  Grid,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -23,7 +21,6 @@ import AddIcon from '@mui/icons-material/Add';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -48,11 +45,6 @@ const Dashboard: React.FC = () => {
     navigate(`/chat/${id}`);
   };
 
-  const handleContinueRecent = () => {
-    if (conversations.length > 0) {
-      handleOpenConvo(conversations[0].conversationId);
-    }
-  };
 
   const formatTime = (timeStr: string) => {
     try {
@@ -80,7 +72,7 @@ const Dashboard: React.FC = () => {
       {/* 1. Header Section */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
         <Box>
-          <Typography variant="h4" color="text.primary" fontWeight="bold">
+          <Typography variant="h4" color="text.primary" sx={{ fontWeight: 'bold' }}>
             Investigation Cockpit
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -113,12 +105,12 @@ const Dashboard: React.FC = () => {
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight="bold">
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                 TOTAL CASES SAVED
               </Typography>
               <FolderSharedIcon color="primary" />
             </Box>
-            <Typography variant="h3" color="text.primary" fontWeight="bold">
+            <Typography variant="h3" color="text.primary" sx={{ fontWeight: 'bold' }}>
               {conversations.length}
             </Typography>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1 }}>
@@ -130,12 +122,12 @@ const Dashboard: React.FC = () => {
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight="bold">
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                 MY SESSION CASES
               </Typography>
               <DescriptionIcon color="primary" />
             </Box>
-            <Typography variant="h3" color="text.primary" fontWeight="bold">
+            <Typography variant="h3" color="text.primary" sx={{ fontWeight: 'bold' }}>
               {conversations.filter(c => c.sessionId === sessionId).length}
             </Typography>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1 }}>
@@ -147,12 +139,12 @@ const Dashboard: React.FC = () => {
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight="bold">
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                 LATEST CASE FILING
               </Typography>
               <CheckCircleIcon sx={{ color: '#10B981' }} />
             </Box>
-            <Typography variant="h6" color="text.primary" fontWeight="bold" sx={{ mt: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Typography variant="h6" color="text.primary" sx={{ mt: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 'bold' }}>
               {conversations.length > 0 ? conversations[0].title : 'No cases recorded'}
             </Typography>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1.5 }}>
@@ -167,7 +159,7 @@ const Dashboard: React.FC = () => {
         <Box sx={{ p: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E5E7EB', bgcolor: '#FFFFFF' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <HistoryIcon color="action" />
-            <Typography variant="h6" fontWeight="bold" color="text.primary">
+            <Typography variant="h6" color="text.primary" sx={{ fontWeight: 'bold' }}>
               All Investigations History
             </Typography>
           </Box>

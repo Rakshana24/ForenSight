@@ -60,10 +60,8 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 1 }}>
               <Typography
                 variant="body2"
-                fontWeight={isActive ? 'bold' : 500}
-                color={isActive ? '#1e3a8a' : '#1f2937'}
                 noWrap
-                sx={{ flex: 1 }}
+                sx={{ flex: 1, fontWeight: isActive ? 'bold' : 500, color: isActive ? '#1e3a8a' : '#1f2937' }}
               >
                 {convo.title}
               </Typography>

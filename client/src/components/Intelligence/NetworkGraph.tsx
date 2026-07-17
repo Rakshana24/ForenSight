@@ -70,7 +70,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodesData, edgesData }) => 
     data: { 
       label: (
         <Box sx={{ p: 0.5, textAlign: 'center' }}>
-          <Typography variant="caption" display="block" fontWeight="bold">
+          <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold' }}>
             {n.type.toUpperCase()}
           </Typography>
           <Typography variant="body2" sx={{ wordWrap: 'break-word', whiteSpace: 'normal', px: 1 }}>
@@ -117,7 +117,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodesData, edgesData }) => 
     [initialNodes, initialEdges]
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+  const [nodes, , onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
   // Fallback connection handler (though nodes are mostly readonly from API)
