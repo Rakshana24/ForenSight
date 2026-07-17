@@ -19,7 +19,9 @@ class IntelligenceService {
       return rows.map(r => this.caseRepo.flattenRow(r));
     } catch (error) {
       console.error('[IntelligenceService] ZCQL Error:', error.message, '| Query:', query);
-      return [];
+      const err = new Error(`Database query error: ${error.message}`);
+      err.statusCode = 500;
+      throw err;
     }
   }
 
@@ -34,20 +36,6 @@ class IntelligenceService {
     if (!val) return [];
 
     let baseQuery = '';
-    
-    // 2-step lookup helper for related tables
-    const fetchCasesBySubquery = async (childQuery, childIdField, caseMasterField, isString = true) => {
-      const childRows = await this.executeZCQL(childQuery);
-      if (childRows.length === 0) return [];
-      
-      const ids = [...new Set(childRows.map(r => r[childIdField]).filter(Boolean))];
-      if (ids.length === 0) return [];
-      
-      const inClause = isString ? ids.map(id => `'${id}'`).join(',') : ids.join(',');
-      const query = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ${caseMasterField} IN (${inClause})`;
-      return await this.executeZCQL(query);
-    };
-
     let rows = [];
 
     switch(searchType) {
@@ -56,56 +44,284 @@ class IntelligenceService {
           baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CaseMasterID = ${val}`;
           rows = await this.executeZCQL(baseQuery);
         }
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for Case ID: ${searchValue}`);
+          const err = new Error(`No case found with Case ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
+
       case 'Crime Number':
         baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CrimeNo = '${val}'`;
         rows = await this.executeZCQL(baseQuery);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for Crime Number: ${searchValue}`);
+          const err = new Error(`No case found with crime number ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Officer ID':
-        // Direct JOIN worked for exact match
-        baseQuery = `SELECT CaseMaster.ROWID, CaseMaster.CaseMasterID, CaseMaster.CrimeNo, CaseMaster.CrimeRegisteredDate, CaseMaster.BriefFacts FROM CaseMaster INNER JOIN Employee ON CaseMaster.PolicePersonID = Employee.ROWID WHERE Employee.EmployeeID = '${val}'`;
+
+      case 'Case Number':
+        baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CaseNo = '${val}'`;
         rows = await this.executeZCQL(baseQuery);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for Case Number: ${searchValue}`);
+          const err = new Error(`No case found with case number ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Officer Name':
-        rows = await fetchCasesBySubquery(
-          `SELECT ROWID FROM Employee WHERE FirstName LIKE '%${val}%'`,
-          'ROWID',
-          'PolicePersonID',
-          true
-        );
+
+      case 'Accused ID':
+      case 'Person ID': {
+        if (isNaN(val)) {
+          const err = new Error(`No accused found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const accRows = await this.executeZCQL(`SELECT CaseMasterID FROM Accused WHERE AccusedMasterID = ${val}`);
+        if (accRows.length === 0) {
+          console.log(`[DEBUG] Accused lookup returned no rows for ID: ${searchValue}`);
+          const err = new Error(`No accused found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const accIds = [...new Set(accRows.map(r => r.CaseMasterID).filter(Boolean))];
+        if (accIds.length === 0) {
+          console.log(`[DEBUG] Case not found for accused ID: ${searchValue}`);
+          const err = new Error(`No case found linked with accused ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const inClause = accIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ROWID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with accused ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Accused Name':
-        rows = await fetchCasesBySubquery(
-          `SELECT CaseMasterID FROM Accused WHERE AccusedName LIKE '%${val}%'`,
-          'CaseMasterID',
-          'CaseMasterID',
-          false
-        );
+      }
+
+      case 'Victim ID': {
+        if (isNaN(val)) {
+          const err = new Error(`No victim found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const vicRows = await this.executeZCQL(`SELECT CaseMasterID FROM Victim WHERE VictimMasterID = ${val}`);
+        if (vicRows.length === 0) {
+          console.log(`[DEBUG] Victim lookup returned no rows for ID: ${searchValue}`);
+          const err = new Error(`No victim found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const vicIds = [...new Set(vicRows.map(r => r.CaseMasterID).filter(Boolean))];
+        if (vicIds.length === 0) {
+          console.log(`[DEBUG] Case not found for victim ID: ${searchValue}`);
+          const err = new Error(`No case found linked with victim ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const inClause = vicIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ROWID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with victim ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Victim Name':
-        rows = await fetchCasesBySubquery(
-          `SELECT CaseMasterID FROM Victim WHERE VictimName LIKE '%${val}%'`,
-          'CaseMasterID',
-          'CaseMasterID',
-          false
-        );
+      }
+
+      case 'Employee ID':
+      case 'Officer ID': {
+        const empRows = await this.executeZCQL(`SELECT ROWID FROM Employee WHERE EmployeeID = '${val}'`);
+        if (empRows.length === 0) {
+          console.log(`[DEBUG] Officer lookup returned no rows for Employee ID: ${searchValue}`);
+          const err = new Error(`No officer found with Employee ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const empIds = [...new Set(empRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = empIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE PolicePersonID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for officer: ${searchValue}`);
+          const err = new Error(`No case found linked with officer ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Police Unit':
-        rows = await fetchCasesBySubquery(
-          `SELECT ROWID FROM Unit WHERE UnitName LIKE '%${val}%'`,
-          'ROWID',
-          'PoliceStationID',
-          true
-        );
+      }
+
+      case 'Officer Name': {
+        const empRows = await this.executeZCQL(`SELECT ROWID FROM Employee WHERE FirstName = '${val}' OR FirstName LIKE '%${val}%'`);
+        if (empRows.length === 0) {
+          console.log(`[DEBUG] Officer lookup returned no rows for search value: ${searchValue}`);
+          const err = new Error(`No officer found with name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        console.log(`[DEBUG] Officer found: ${searchValue}`);
+        const empIds = [...new Set(empRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = empIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE PolicePersonID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for officer: ${searchValue}`);
+          const err = new Error(`No case found linked with officer name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
-      case 'Court':
-        rows = await fetchCasesBySubquery(
-          `SELECT ROWID FROM Court WHERE CourtName LIKE '%${val}%'`,
-          'ROWID',
-          'CourtID',
-          true
-        );
+      }
+
+      case 'Accused Name': {
+        const accRows = await this.executeZCQL(`SELECT CaseMasterID FROM Accused WHERE AccusedName = '${val}' OR AccusedName LIKE '%${val}%'`);
+        if (accRows.length === 0) {
+          console.log(`[DEBUG] Accused lookup returned no rows for search value: ${searchValue}`);
+          const err = new Error(`No accused found with name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        console.log(`[DEBUG] Accused found: ${searchValue}`);
+        const accIds = [...new Set(accRows.map(r => r.CaseMasterID).filter(Boolean))];
+        const inClause = accIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ROWID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with accused name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
         break;
+      }
+
+      case 'Victim Name': {
+        const vicRows = await this.executeZCQL(`SELECT CaseMasterID FROM Victim WHERE VictimName = '${val}' OR VictimName LIKE '%${val}%'`);
+        if (vicRows.length === 0) {
+          console.log(`[DEBUG] Victim lookup returned no rows for search value: ${searchValue}`);
+          const err = new Error(`No victim found with name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        console.log(`[DEBUG] Victim found: ${searchValue}`);
+        const vicIds = [...new Set(vicRows.map(r => r.CaseMasterID).filter(Boolean))];
+        const inClause = vicIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ROWID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with victim name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
+
+      case 'KGID': {
+        const empRows = await this.executeZCQL(`SELECT ROWID FROM Employee WHERE KGID = '${val}'`);
+        if (empRows.length === 0) {
+          console.log(`[DEBUG] Officer lookup returned no rows for KGID: ${searchValue}`);
+          const err = new Error(`No officer found with KGID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const empIds = [...new Set(empRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = empIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE PolicePersonID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found for officer KGID: ${searchValue}`);
+          const err = new Error(`No case found linked with officer KGID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
+
+      case 'Station ID': {
+        const unitRows = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE UnitID = '${val}'`);
+        if (unitRows.length === 0) {
+          console.log(`[DEBUG] Police Station lookup returned no rows for ID: ${searchValue}`);
+          const err = new Error(`No police station found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const unitIds = [...new Set(unitRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = unitIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE PoliceStationID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with police station ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
+
+      case 'Station Name':
+      case 'Police Unit': {
+        const unitRows = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE UnitName = '${val}' OR UnitName LIKE '%${val}%'`);
+        if (unitRows.length === 0) {
+          console.log(`[DEBUG] Police Station lookup returned no rows for search value: ${searchValue}`);
+          const err = new Error(`No police station found with name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const unitIds = [...new Set(unitRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = unitIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE PoliceStationID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with police station name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
+
+      case 'Court ID': {
+        const courtRows = await this.executeZCQL(`SELECT ROWID FROM Court WHERE CourtID = '${val}'`);
+        if (courtRows.length === 0) {
+          console.log(`[DEBUG] Court lookup returned no rows for ID: ${searchValue}`);
+          const err = new Error(`No court found with ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const courtIds = [...new Set(courtRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = courtIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CourtID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with court ID ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
+
+      case 'Court Name':
+      case 'Court': {
+        const courtRows = await this.executeZCQL(`SELECT ROWID FROM Court WHERE CourtName = '${val}' OR CourtName LIKE '%${val}%'`);
+        if (courtRows.length === 0) {
+          console.log(`[DEBUG] Court lookup returned no rows for search value: ${searchValue}`);
+          const err = new Error(`No court found with name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        const courtIds = [...new Set(courtRows.map(r => r.ROWID).filter(Boolean))];
+        const inClause = courtIds.map(id => `'${id}'`).join(',');
+        rows = await this.executeZCQL(`SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CourtID IN (${inClause})`);
+        if (rows.length === 0) {
+          console.log(`[DEBUG] Case not found`);
+          const err = new Error(`No case found linked with court name ${searchValue}.`);
+          err.statusCode = 404;
+          throw err;
+        }
+        break;
+      }
     }
 
     // Deduplicate in case multiple matches (e.g. 2 accused in same case)

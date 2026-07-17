@@ -48,7 +48,7 @@ const Intelligence: React.FC = () => {
     try {
       const results = await intelligenceService.searchCases(searchType, searchValue);
       if (results.length === 0) {
-        setError('No cases found matching the search criteria.');
+        setError('No matching record found.');
       } else if (results.length === 1) {
         await fetchGraph(String(results[0].CaseMasterID));
       } else {
@@ -97,12 +97,19 @@ const Intelligence: React.FC = () => {
               >
                 <MenuItem value="Case ID">Case ID</MenuItem>
                 <MenuItem value="Crime Number">Crime Number</MenuItem>
-                <MenuItem value="Officer ID">Officer ID</MenuItem>
-                <MenuItem value="Officer Name">Officer Name</MenuItem>
+                <MenuItem value="Case Number">Case Number</MenuItem>
+                <MenuItem value="Accused ID">Accused ID</MenuItem>
+                <MenuItem value="Person ID">Person ID</MenuItem>
                 <MenuItem value="Accused Name">Accused Name</MenuItem>
+                <MenuItem value="Victim ID">Victim ID</MenuItem>
                 <MenuItem value="Victim Name">Victim Name</MenuItem>
-                <MenuItem value="Police Unit">Police Unit</MenuItem>
-                <MenuItem value="Court">Court</MenuItem>
+                <MenuItem value="Employee ID">Employee ID</MenuItem>
+                <MenuItem value="Officer Name">Officer Name</MenuItem>
+                <MenuItem value="KGID">KGID</MenuItem>
+                <MenuItem value="Station ID">Station ID</MenuItem>
+                <MenuItem value="Station Name">Station Name</MenuItem>
+                <MenuItem value="Court ID">Court ID</MenuItem>
+                <MenuItem value="Court Name">Court Name</MenuItem>
               </Select>
             </FormControl>
             <TextField

@@ -17,6 +17,7 @@ const relationshipGraphHandler = async (req, res) => {
     return sendJSON(res, 200, graphData);
   } catch (error) {
     console.error('[DEBUG] Intelligence API Exception stack trace:', error.stack || error);
+    console.log(`[DEBUG] Graph generation failed: ${error.message}`);
     const statusCode = error.statusCode || 500;
     return sendError(res, statusCode, error.message);
   }

@@ -6,7 +6,7 @@ function sendJSON(res, statusCode, data) {
 }
 
 function sendError(res, statusCode, message) {
-  sendJSON(res, statusCode, { error: message });
+  sendJSON(res, statusCode, { error: message, message: message });
 }
 
 module.exports = { sendJSON, sendError };
