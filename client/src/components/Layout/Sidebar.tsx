@@ -6,6 +6,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ForumIcon from '@mui/icons-material/Forum';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { useChat } from '../../contexts/ChatContext';
 import ConversationCard from '../Conversation/ConversationCard';
 
@@ -141,6 +142,38 @@ const Sidebar: React.FC = () => {
             primary={
               <Typography variant="body2" sx={{ fontWeight: 'bold', color: location.pathname === '/intelligence' ? 'primary.main' : 'text.primary' }}>
                 Intelligence
+              </Typography>
+            }
+          />
+        </ListItemButton>
+
+        {/* Analytics Link */}
+        <ListItemButton
+          selected={location.pathname === '/analytics'}
+          onClick={() => navigate('/analytics')}
+          sx={{
+            borderRadius: '6px',
+            py: 1,
+            px: 1.5,
+            bgcolor: location.pathname === '/analytics' ? '#eff6ff' : 'transparent',
+            border: '1px solid',
+            borderColor: location.pathname === '/analytics' ? '#3b82f6' : '#e5e7eb',
+            '&.Mui-selected': {
+              bgcolor: '#eff6ff',
+              '&:hover': {
+                bgcolor: '#dbeafe',
+              }
+            },
+            '&:hover': {
+              bgcolor: '#f8fafc',
+            }
+          }}
+        >
+          <TrendingUpIcon fontSize="small" color={location.pathname === '/analytics' ? 'primary' : 'action'} sx={{ mr: 1.5 }} />
+          <ListItemText
+            primary={
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: location.pathname === '/analytics' ? 'primary.main' : 'text.primary' }}>
+                Analytics
               </Typography>
             }
           />

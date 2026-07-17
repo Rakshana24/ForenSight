@@ -45,5 +45,15 @@ export const intelligenceService = {
       params: { searchType, searchValue }
     });
     return response.data;
+  },
+  getFilterOptions: async (): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/filters');
+    return response.data;
+  },
+  getTrendData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/trends', {
+      params: filters
+    });
+    return response.data;
   }
 };

@@ -12,6 +12,7 @@ const courtHandler = require('./routes/court.route');
 const chatHandler = require('./routes/chat.route');
 const conversationRouteHandler = require('./routes/conversation.route');
 const { relationshipGraphHandler, searchHandler } = require('./routes/intelligence.route');
+const { getTrendsHandler, getFiltersHandler } = require('./routes/analytics.route');
 
 const routes = {
   'GET /health': healthHandler,
@@ -38,7 +39,11 @@ const routes = {
   
   // Feature 16 Criminal Relationship Graph
   'GET /intelligence/relationship-graph': relationshipGraphHandler,
-  'GET /intelligence/search': searchHandler
+  'GET /intelligence/search': searchHandler,
+
+  // Feature 19 Crime Trend Analysis
+  'GET /intelligence/analytics/trends': getTrendsHandler,
+  'GET /intelligence/analytics/filters': getFiltersHandler
 };
 
 async function dispatch(req, res) {
