@@ -32,6 +32,34 @@ const getTrendsHandler = async (req, res) => {
   }
 };
 
+const getHotspotsHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, crimeCategory, district, policeStation, year, month } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const hotspotData = await analyticsService.getHotspotData({
+      startDate,
+      endDate,
+      crimeType,
+      crimeCategory,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined
+    });
+
+    return sendJSON(res, 200, hotspotData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics Hotspots API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
 const getFiltersHandler = async (req, res) => {
   try {
     const app = catalyst.initialize(req);
@@ -50,5 +78,6 @@ const getFiltersHandler = async (req, res) => {
 
 module.exports = {
   getTrendsHandler,
+  getHotspotsHandler,
   getFiltersHandler
 };

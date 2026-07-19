@@ -55,5 +55,11 @@ export const intelligenceService = {
       params: filters
     });
     return response.data;
+  },
+  getHotspotData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/hotspots', {
+      params: filters
+    });
+    return response.data;
   }
 };
