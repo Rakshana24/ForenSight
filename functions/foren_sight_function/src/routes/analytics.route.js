@@ -76,8 +76,38 @@ const getFiltersHandler = async (req, res) => {
   }
 };
 
+const getClustersHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, crimeCategory, district, policeStation, year, month, interval } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const clusterData = await analyticsService.getClusterData({
+      startDate,
+      endDate,
+      crimeType,
+      crimeCategory,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined,
+      interval
+    });
+
+    return sendJSON(res, 200, clusterData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics Clusters API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
 module.exports = {
   getTrendsHandler,
   getHotspotsHandler,
-  getFiltersHandler
+  getFiltersHandler,
+  getClustersHandler
 };

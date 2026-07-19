@@ -61,5 +61,11 @@ export const intelligenceService = {
       params: filters
     });
     return response.data;
+  },
+  getClusterData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/clusters', {
+      params: filters
+    });
+    return response.data;
   }
 };

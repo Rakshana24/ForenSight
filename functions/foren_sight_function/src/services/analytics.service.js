@@ -521,6 +521,437 @@ class AnalyticsService {
       }
     };
   }
+
+  /**
+   * Computes Crime Cluster Detection and growth analysis over comparison periods
+   */
+  async getClusterData(filters) {
+    const { startDate, endDate, crimeType, crimeCategory, district, policeStation, year, month, interval = 'month' } = filters;
+    const whereClauses = [];
+
+    // Filter by Date Range
+    if (startDate) {
+      whereClauses.push(`CrimeRegisteredDate >= '${startDate}'`);
+    }
+    if (endDate) {
+      whereClauses.push(`CrimeRegisteredDate <= '${endDate}'`);
+    }
+
+    // Filter by Crime Type
+    if (crimeType) {
+      whereClauses.push(`CrimeMinorHeadID = '${crimeType}'`);
+    }
+
+    // Filter by Crime Category
+    if (crimeCategory) {
+      whereClauses.push(`CrimeMajorHeadID = '${crimeCategory}'`);
+    }
+
+    // Filter by Police Station
+    if (policeStation) {
+      whereClauses.push(`PoliceStationID = '${policeStation}'`);
+    }
+
+    // Filter by District
+    if (district && !policeStation) {
+      const stations = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE DistrictID = '${district}'`);
+      if (stations.length > 0) {
+        const stationRowIds = stations.map(s => `'${s.ROWID}'`).join(',');
+        whereClauses.push(`PoliceStationID IN (${stationRowIds})`);
+      } else {
+        whereClauses.push("PoliceStationID = '0'");
+      }
+    }
+
+    // Filter by Year
+    if (year) {
+      whereClauses.push(`CrimeRegisteredDate >= '${year}-01-01'`);
+      whereClauses.push(`CrimeRegisteredDate <= '${year}-12-31'`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const baseQuery = `SELECT CrimeRegisteredDate, CrimeMajorHeadID, CrimeMinorHeadID, PoliceStationID, latitude, longitude FROM CaseMaster ${whereString}`;
+
+    // Execute paginated fetch to retrieve all matching cases
+    const cases = await this.executePaginatedZCQL(baseQuery);
+
+    if (cases.length === 0) {
+      return {
+        totalRecords: 0,
+        summary: {
+          highestGrowthDistrict: 'N/A',
+          highestGrowthStation: 'N/A',
+          fastestGrowingCrimeType: 'N/A',
+          largestCrimeIncrease: 'N/A',
+          avgGrowth: 0,
+          clusterCount: 0
+        },
+        rankings: {
+          districts: [],
+          stations: [],
+          locations: [],
+          crimeCategories: [],
+          crimeTypes: []
+        },
+        insights: ['Not enough historical data to detect crime clusters.']
+      };
+    }
+
+    // Fetch metadata for name mapping
+    const districts = await this.executeZCQL('SELECT ROWID, DistrictName FROM District');
+    const stations = await this.executeZCQL('SELECT ROWID, UnitName, DistrictID FROM Unit');
+    const crimeHeads = await this.executeZCQL('SELECT ROWID, CrimeGroupName FROM CrimeHead');
+    const crimeSubHeads = await this.executeZCQL('SELECT ROWID, CrimeHeadName FROM CrimeSubHead');
+
+    // Create lookup maps
+    const districtMap = {};
+    districts.forEach(d => { districtMap[d.ROWID] = d.DistrictName; });
+
+    const unitMap = {};
+    stations.forEach(s => { unitMap[s.ROWID] = { UnitName: s.UnitName, DistrictID: s.DistrictID }; });
+
+    const crimeHeadMap = {};
+    crimeHeads.forEach(ch => { crimeHeadMap[ch.ROWID] = ch.CrimeGroupName; });
+
+    const crimeSubHeadMap = {};
+    crimeSubHeads.forEach(csh => { crimeSubHeadMap[csh.ROWID] = csh.CrimeHeadName; });
+
+    // Filter in-memory by Month (if specified)
+    let filteredCases = cases;
+    if (month) {
+      const monthStr = month.toString().padStart(2, '0');
+      filteredCases = cases.filter(c => {
+        if (!c.CrimeRegisteredDate) return false;
+        const parts = c.CrimeRegisteredDate.split('-');
+        return parts[1] === monthStr;
+      });
+    }
+
+    if (filteredCases.length === 0) {
+      return {
+        totalRecords: 0,
+        summary: {
+          highestGrowthDistrict: 'N/A',
+          highestGrowthStation: 'N/A',
+          fastestGrowingCrimeType: 'N/A',
+          largestCrimeIncrease: 'N/A',
+          avgGrowth: 0,
+          clusterCount: 0
+        },
+        rankings: {
+          districts: [],
+          stations: [],
+          locations: [],
+          crimeCategories: [],
+          crimeTypes: []
+        },
+        insights: ['Not enough historical data to detect crime clusters.']
+      };
+    }
+
+    // Identify anchor maximum date
+    const dates = filteredCases
+      .map(c => c.CrimeRegisteredDate)
+      .filter(Boolean)
+      .sort((a, b) => new Date(a) - new Date(b));
+    
+    if (dates.length === 0) {
+      return {
+        totalRecords: 0,
+        summary: {
+          highestGrowthDistrict: 'N/A',
+          highestGrowthStation: 'N/A',
+          fastestGrowingCrimeType: 'N/A',
+          largestCrimeIncrease: 'N/A',
+          avgGrowth: 0,
+          clusterCount: 0
+        },
+        rankings: {
+          districts: [],
+          stations: [],
+          locations: [],
+          crimeCategories: [],
+          crimeTypes: []
+        },
+        insights: ['Not enough historical data to detect crime clusters.']
+      };
+    }
+
+    const maxDateStr = dates[dates.length - 1];
+
+    // Split cases into Current and Previous period bins
+    const currentPeriodCases = [];
+    const previousPeriodCases = [];
+
+    filteredCases.forEach(c => {
+      if (!c.CrimeRegisteredDate) return;
+      const period = this.getCasePeriod(c.CrimeRegisteredDate, maxDateStr, interval);
+      if (period === 'current') {
+        currentPeriodCases.push(c);
+      } else if (period === 'previous') {
+        previousPeriodCases.push(c);
+      }
+    });
+
+    // Check if we have cases in at least one period
+    if (currentPeriodCases.length === 0 && previousPeriodCases.length === 0) {
+      return {
+        totalRecords: 0,
+        summary: {
+          highestGrowthDistrict: 'N/A',
+          highestGrowthStation: 'N/A',
+          fastestGrowingCrimeType: 'N/A',
+          largestCrimeIncrease: 'N/A',
+          avgGrowth: 0,
+          clusterCount: 0
+        },
+        rankings: {
+          districts: [],
+          stations: [],
+          locations: [],
+          crimeCategories: [],
+          crimeTypes: []
+        },
+        insights: ['Not enough historical data to detect crime clusters.']
+      };
+    }
+
+    // Aggregate values
+    const compileAgg = (casesList) => {
+      const dist = {};
+      const stat = {};
+      const loc = {};
+      const cat = {};
+      const typ = {};
+
+      casesList.forEach(c => {
+        const stationInfo = unitMap[c.PoliceStationID] || { UnitName: 'Unknown Station', DistrictID: null };
+        const districtName = districtMap[stationInfo.DistrictID] || 'Unknown District';
+        const stationName = stationInfo.UnitName;
+        const categoryName = crimeHeadMap[c.CrimeMajorHeadID] || 'Unknown Category';
+        const typeName = crimeSubHeadMap[c.CrimeMinorHeadID] || 'Unknown Type';
+        const lat = c.latitude ? parseFloat(c.latitude) : null;
+        const lng = c.longitude ? parseFloat(c.longitude) : null;
+
+        dist[districtName] = (dist[districtName] || 0) + 1;
+        stat[stationName] = (stat[stationName] || 0) + 1;
+        cat[categoryName] = (cat[categoryName] || 0) + 1;
+        typ[typeName] = (typ[typeName] || 0) + 1;
+
+        if (lat !== null && lng !== null) {
+          const locKey = `${lat},${lng}|${stationName}|${districtName}`;
+          loc[locKey] = (loc[locKey] || 0) + 1;
+        }
+      });
+
+      return { dist, stat, loc, cat, typ };
+    };
+
+    const currentAgg = compileAgg(currentPeriodCases);
+    const previousAgg = compileAgg(previousPeriodCases);
+
+    const RISK_THRESHOLDS = {
+      CRITICAL: 100, // 100% or more
+      HIGH: 50,      // 50% or more
+      MEDIUM: 20,    // 20% or more
+      LOW: 0
+    };
+
+    const computeRankingList = (currMap, prevMap, isLocation = false) => {
+      const allKeys = new Set([...Object.keys(currMap), ...Object.keys(prevMap)]);
+      const resultList = [];
+
+      allKeys.forEach(key => {
+        const currCount = currMap[key] || 0;
+        const prevCount = prevMap[key] || 0;
+        const diff = currCount - prevCount;
+        
+        let pct = 0;
+        if (prevCount === 0) {
+          pct = currCount > 0 ? currCount * 100 : 0;
+        } else {
+          pct = Math.round((diff / prevCount) * 100);
+        }
+
+        let risk = 'LOW';
+        if (pct >= RISK_THRESHOLDS.CRITICAL) risk = 'CRITICAL';
+        else if (pct >= RISK_THRESHOLDS.HIGH) risk = 'HIGH';
+        else if (pct >= RISK_THRESHOLDS.MEDIUM) risk = 'MEDIUM';
+
+        const trend = diff > 0 ? 'Increasing' : diff < 0 ? 'Decreasing' : 'Stable';
+
+        let name = key;
+        let lat = null;
+        let lng = null;
+
+        if (isLocation) {
+          const parts = key.split('|');
+          const coords = parts[0].split(',');
+          lat = parseFloat(coords[0]);
+          lng = parseFloat(coords[1]);
+          name = `Lat: ${lat}, Lng: ${lng} (${parts[1]})`;
+        }
+
+        resultList.push({
+          name,
+          currentCount: currCount,
+          previousCount: prevCount,
+          difference: diff,
+          percentage: pct,
+          risk,
+          trend,
+          ...(isLocation ? { lat, lng } : {})
+        });
+      });
+
+      // Sort by growth percentage (descending)
+      resultList.sort((a, b) => b.percentage - a.percentage);
+
+      return resultList.map((item, idx) => ({
+        rank: idx + 1,
+        ...item
+      }));
+    };
+
+    const rankedDistricts = computeRankingList(currentAgg.dist, previousAgg.dist);
+    const rankedStations = computeRankingList(currentAgg.stat, previousAgg.stat);
+    const rankedLocations = computeRankingList(currentAgg.loc, previousAgg.loc, true);
+    const rankedCategories = computeRankingList(currentAgg.cat, previousAgg.cat);
+    const rankedTypes = computeRankingList(currentAgg.typ, previousAgg.typ);
+
+    // Summary Card stats calculations
+    const getHighestGrowthName = (list) => {
+      const increasing = list.filter(item => item.difference > 0);
+      return increasing.length > 0 ? increasing[0].name : 'N/A';
+    };
+
+    const highestGrowthDistrict = getHighestGrowthName(rankedDistricts);
+    const highestGrowthStation = getHighestGrowthName(rankedStations);
+    const fastestGrowingCrimeType = getHighestGrowthName(rankedTypes);
+
+    // Find largest absolute case increase
+    let largestIncreaseName = 'N/A';
+    let maxIncreaseDiff = 0;
+    
+    rankedStations.forEach(s => {
+      if (s.difference > maxIncreaseDiff) {
+        maxIncreaseDiff = s.difference;
+        largestIncreaseName = `${s.name} (+${s.difference} cases)`;
+      }
+    });
+
+    // Detect active clusters (growth >= 20% or high count >= 5 cases in current period)
+    const activeClusters = rankedStations.filter(s => s.percentage >= 20 || s.currentCount >= 5);
+    const clusterCount = activeClusters.length;
+    
+    const totalGrowthSum = activeClusters.reduce((acc, c) => acc + c.percentage, 0);
+    const avgGrowth = clusterCount > 0 ? Math.round(totalGrowthSum / clusterCount) : 0;
+
+    // Dynamic insights sentence builder
+    const insights = [];
+    
+    // Insight 1: Highest growth district
+    const topGrowDist = rankedDistricts.find(d => d.difference > 0);
+    if (topGrowDist) {
+      insights.push(`Crime cases increased by ${topGrowDist.percentage}% in ${topGrowDist.name} compared to the previous period.`);
+    }
+
+    // Insight 2: Highest growth station
+    const topGrowStation = rankedStations.find(s => s.difference > 0);
+    if (topGrowStation) {
+      insights.push(`Abnormal activity detected in ${topGrowStation.name} Police Station, with a growth of ${topGrowStation.percentage}%.`);
+    }
+
+    // Insight 3: Specific crime type surge
+    const topGrowType = rankedTypes.find(t => t.difference > 0);
+    if (topGrowType) {
+      insights.push(`${topGrowType.name} cases registered a growth of ${topGrowType.percentage}% across the selected region.`);
+    }
+
+    if (insights.length === 0) {
+      insights.push('No significant crime escalation or abnormal growth detected in the current period.');
+    }
+
+    return {
+      totalRecords: filteredCases.length,
+      summary: {
+        highestGrowthDistrict,
+        highestGrowthStation,
+        fastestGrowingCrimeType,
+        largestCrimeIncrease: largestIncreaseName,
+        avgGrowth,
+        clusterCount
+      },
+      rankings: {
+        districts: rankedDistricts,
+        stations: rankedStations,
+        locations: rankedLocations,
+        crimeCategories: rankedCategories,
+        crimeTypes: rankedTypes
+      },
+      insights
+    };
+  }
+
+  /**
+   * Helper to resolve period classification of cases relative to dataset maxDate
+   */
+  getCasePeriod(caseDateStr, maxDateStr, interval) {
+    const cDate = new Date(caseDateStr);
+    const maxDate = new Date(maxDateStr);
+
+    const cYear = cDate.getFullYear();
+    const cMonth = cDate.getMonth();
+    
+    const maxYear = maxDate.getFullYear();
+    const maxMonth = maxDate.getMonth();
+
+    if (interval === 'year') {
+      if (cYear === maxYear) return 'current';
+      if (cYear === maxYear - 1) return 'previous';
+      return 'other';
+    }
+
+    if (interval === 'month') {
+      if (cYear === maxYear && cMonth === maxMonth) return 'current';
+      
+      let prevYear = maxYear;
+      let prevMonth = maxMonth - 1;
+      if (prevMonth < 0) {
+        prevMonth = 11;
+        prevYear--;
+      }
+      if (cYear === prevYear && cMonth === prevMonth) return 'previous';
+      return 'other';
+    }
+
+    if (interval === 'quarter') {
+      const getQuarter = (m) => Math.floor(m / 3);
+      const maxQ = getQuarter(maxMonth);
+      const cQ = getQuarter(cMonth);
+
+      if (cYear === maxYear && cQ === maxQ) return 'current';
+      
+      let prevYear = maxYear;
+      let prevQ = maxQ - 1;
+      if (prevQ < 0) {
+        prevQ = 3;
+        prevYear--;
+      }
+      if (cYear === prevYear && cQ === prevQ) return 'previous';
+      return 'other';
+    }
+
+    if (interval === 'week') {
+      const oneDay = 24 * 60 * 60 * 1000;
+      const diffDays = Math.floor((maxDate.getTime() - cDate.getTime()) / oneDay);
+      if (diffDays >= 0 && diffDays < 7) return 'current';
+      if (diffDays >= 7 && diffDays < 14) return 'previous';
+      return 'other';
+    }
+
+    return 'other';
+  }
 }
 
 module.exports = AnalyticsService;

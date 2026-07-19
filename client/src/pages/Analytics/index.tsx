@@ -94,6 +94,24 @@ const AnalyticsPage: React.FC = () => {
   const [leafletReady, setLeafletReady] = useState(false);
   const mapRef = React.useRef<any>(null);
 
+  // Cluster Filters & Analytics States
+  const [clusterDistrict, setClusterDistrict] = useState('');
+  const [clusterStation, setClusterStation] = useState('');
+  const [clusterCrimeCategory, setClusterCrimeCategory] = useState('');
+  const [clusterCrimeType, setClusterCrimeType] = useState('');
+  const [clusterStartDate, setClusterStartDate] = useState('');
+  const [clusterEndDate, setClusterEndDate] = useState('');
+  const [clusterYear, setClusterYear] = useState<number | string>('');
+  const [clusterMonth, setClusterMonth] = useState<number | string>('');
+  const [clusterLoading, setClusterLoading] = useState(false);
+  const [clusterError, setClusterError] = useState('');
+  const [clusterData, setClusterData] = useState<any>(null);
+  const [clusterInterval, setClusterInterval] = useState('month'); // month, year, quarter, week
+  const [clusterDimension, setClusterDimension] = useState('stations'); // districts, stations, locations, crimeCategories, crimeTypes
+  const [clusterChartType, setClusterChartType] = useState('bar'); // bar, horizontal, line, table, map
+  const [clusterLimit, setClusterLimit] = useState<number>(10);
+  const clusterMapRef = React.useRef<any>(null);
+
   // Trend Data States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -164,17 +182,44 @@ const AnalyticsPage: React.FC = () => {
     }
   };
 
+  // Load Cluster Data
+  const fetchClusterData = async () => {
+    setClusterLoading(true);
+    setClusterError('');
+    try {
+      const filters = {
+        interval: clusterInterval,
+        district: clusterDistrict || undefined,
+        policeStation: clusterStation || undefined,
+        crimeCategory: clusterCrimeCategory || undefined,
+        crimeType: clusterCrimeType || undefined,
+        startDate: clusterStartDate || undefined,
+        endDate: clusterEndDate || undefined,
+        year: clusterYear || undefined,
+        month: clusterMonth || undefined
+      };
+      const data = await intelligenceService.getClusterData(filters);
+      setClusterData(data);
+    } catch (err: any) {
+      setClusterError(err.response?.data?.message || 'Failed to fetch crime cluster data.');
+    } finally {
+      setClusterLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 0) {
       fetchTrendData();
     } else if (activeTab === 1) {
       fetchHotspotData();
+    } else if (activeTab === 2) {
+      fetchClusterData();
     }
-  }, [activeTab]);
+  }, [activeTab, clusterInterval]);
 
   // Load Leaflet Script & CSS
   useEffect(() => {
-    if (activeTab === 1) {
+    if (activeTab === 1 || activeTab === 2) {
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -242,11 +287,62 @@ const AnalyticsPage: React.FC = () => {
     }
   }, [activeTab, leafletReady, hotspotData, hotspotChartType]);
 
+  // Initialize and Render Leaflet Map for Clusters
+  useEffect(() => {
+    if (activeTab === 2 && leafletReady && clusterData?.rankings?.locations && clusterChartType === 'map') {
+      const timer = setTimeout(() => {
+        const container = document.getElementById('cluster-map');
+        if (!container) return;
+
+        if (clusterMapRef.current) {
+          clusterMapRef.current.remove();
+          clusterMapRef.current = null;
+        }
+
+        const locations = clusterData.rankings.locations;
+        const validCoords = locations.filter((l: any) => l.lat && l.lng);
+        if (validCoords.length === 0) {
+          return;
+        }
+
+        const centerLat = validCoords[0].lat;
+        const centerLng = validCoords[0].lng;
+
+        const map = (window as any).L.map('cluster-map').setView([centerLat, centerLng], 10);
+        (window as any).L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        validCoords.forEach((loc: any) => {
+          const marker = (window as any).L.marker([loc.lat, loc.lng]).addTo(map);
+          marker.bindPopup(`
+            <div style="font-family: Inter, sans-serif; font-size: 13px;">
+              <strong style="color: #1E3A8A; font-size: 14px;">${loc.name}</strong><br/>
+              <hr style="margin: 6px 0; border: none; border-top: 1px solid #E5E7EB;"/>
+              <b>Current Count:</b> ${loc.currentCount}<br/>
+              <b>Previous Count:</b> ${loc.previousCount}<br/>
+              <b>Growth:</b> <span style="color: ${loc.difference > 0 ? '#DC2626' : loc.difference < 0 ? '#16A34A' : '#4B5563'}; font-weight: bold;">${loc.difference > 0 ? '+' : ''}${loc.percentage}%</span><br/>
+              <b>Risk Level:</b> <span style="font-weight: bold; color: ${loc.risk === 'CRITICAL' ? '#DC2626' : loc.risk === 'HIGH' ? '#EF4444' : loc.risk === 'MEDIUM' ? '#F59E0B' : '#10B981'};">${loc.risk}</span>
+            </div>
+          `);
+        });
+
+        clusterMapRef.current = map;
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, leafletReady, clusterData, clusterChartType]);
+
   useEffect(() => {
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
+      }
+      if (clusterMapRef.current) {
+        clusterMapRef.current.remove();
+        clusterMapRef.current = null;
       }
     };
   }, []);
@@ -304,6 +400,39 @@ const AnalyticsPage: React.FC = () => {
     return filterOpts.crimeSubHeads.filter(s => s.CrimeHeadID === category.ROWID);
   };
 
+  const handleApplyClusterFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchClusterData();
+  };
+
+  const handleClearClusterFilters = () => {
+    setClusterDistrict('');
+    setClusterStation('');
+    setClusterCrimeCategory('');
+    setClusterCrimeType('');
+    setClusterStartDate('');
+    setClusterEndDate('');
+    setClusterYear('');
+    setClusterMonth('');
+    setTimeout(() => {
+      fetchClusterData();
+    }, 50);
+  };
+
+  const getClusterFilteredStations = () => {
+    if (!filterOpts) return [];
+    if (!clusterDistrict) return filterOpts.stations;
+    return filterOpts.stations.filter(s => s.DistrictID === clusterDistrict);
+  };
+
+  const getClusterFilteredSubHeads = () => {
+    if (!filterOpts || !filterOpts.crimeSubHeads) return [];
+    if (!clusterCrimeCategory) return filterOpts.crimeSubHeads;
+    const category = filterOpts.crimeCategories?.find(c => c.ROWID === clusterCrimeCategory);
+    if (!category) return filterOpts.crimeSubHeads;
+    return filterOpts.crimeSubHeads.filter(s => s.CrimeHeadID === category.ROWID);
+  };
+
   // Format Recharts Data
   const getChartData = () => {
     if (!trendData || !trendData.trends || !trendData.trends[activeTrendType]) {
@@ -329,6 +458,448 @@ const AnalyticsPage: React.FC = () => {
 
   const chartData = getChartData();
   const averageCrimesValue = getAverageCrimes();
+
+  const trendChart = React.useMemo(() => {
+    if (!chartData || chartData.length === 0) return null;
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        {activeChartType === 'Line' ? (
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            <Line type="monotone" dataKey="Crimes" stroke="#1E3A8A" strokeWidth={3} activeDot={{ r: 8 }} />
+          </LineChart>
+        ) : activeChartType === 'Bar' ? (
+          <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            <Bar dataKey="Crimes" fill="#1E3A8A" radius={[4, 4, 0, 0]} barSize={activeTrendType === 'Daily' ? 8 : 32} />
+          </BarChart>
+        ) : (
+          <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="crimeColor" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.2}/>
+                <stop offset="95%" stopColor="#1E3A8A" stopOpacity={0.0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            <Area type="monotone" dataKey="Crimes" stroke="#1E3A8A" fillOpacity={1} fill="url(#crimeColor)" strokeWidth={2} />
+          </AreaChart>
+        )}
+      </ResponsiveContainer>
+    );
+  }, [chartData, activeChartType, activeTrendType]);
+
+  const hotspotVisualContent = React.useMemo(() => {
+    if (!hotspotData) return null;
+    const rankedList = hotspotData.rankings[hotspotDimension] || [];
+    const displayData = rankedList.slice(0, hotspotLimit);
+    const hasCoords = hotspotData.rankings.locations.some((l: any) => l.lat && l.lng);
+    const showMapFallback = hotspotChartType === 'map' && (hotspotDimension !== 'locations' || !hasCoords);
+
+    if (showMapFallback) {
+      const fallbackReason = hotspotDimension !== 'locations'
+        ? 'Geographic coordinate markers are only available under "Coordinates" analysis.'
+        : 'No geographic coordinate data exists in the records for the selected filters.';
+      
+      return (
+        <Box>
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {fallbackReason} Automatically falling back to Station Table View.
+          </Alert>
+          <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Police Station</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Crime Count</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Percentage</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Density</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(hotspotData.rankings.stations || []).slice(0, hotspotLimit).map((item: any) => (
+                  <TableRow key={item.rank} hover>
+                    <TableCell>{item.rank}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.count}</TableCell>
+                    <TableCell align="right">{item.percentage}%</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.density}
+                        size="small"
+                        sx={{
+                          fontWeight: 'bold',
+                          bgcolor: item.density === 'High' ? '#FEE2E2' : item.density === 'Medium' ? '#FEF3C7' : '#DBEAFE',
+                          color: item.density === 'High' ? '#991B1B' : item.density === 'Medium' ? '#92400E' : '#1E40AF'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{
+                      fontWeight: 'bold',
+                      color: item.trend.startsWith('+') ? '#DC2626' : item.trend.startsWith('-') ? '#16A34A' : '#4B5563'
+                    }}>
+                      {item.trend}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      );
+    }
+
+    if (hotspotChartType === 'map') {
+      return (
+        <Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, color: 'text.secondary' }}>
+            Interactive Crime Hotspots Map (Top {displayData.length} Locations)
+          </Typography>
+          <div
+            id="hotspot-map"
+            style={{
+              width: '100%',
+              height: '400px',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB',
+              zIndex: 1
+            }}
+          />
+        </Box>
+      );
+    }
+
+    if (hotspotChartType === 'table') {
+      return (
+        <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+          <Table size="small">
+            <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  {hotspotDimension === 'districts' ? 'District' :
+                   hotspotDimension === 'stations' ? 'Police Station' :
+                   hotspotDimension === 'locations' ? 'Coordinates / Station' :
+                   hotspotDimension === 'crimeCategories' ? 'Crime Category' : 'Crime Type'}
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Crime Count</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Percentage</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Density</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {displayData.map((item: any) => (
+                <TableRow key={item.rank} hover>
+                  <TableCell>{item.rank}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.count}</TableCell>
+                  <TableCell align="right">{item.percentage}%</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={item.density}
+                      size="small"
+                      sx={{
+                        fontWeight: 'bold',
+                        bgcolor: item.density === 'High' ? '#FEE2E2' : item.density === 'Medium' ? '#FEF3C7' : '#DBEAFE',
+                        color: item.density === 'High' ? '#991B1B' : item.density === 'Medium' ? '#92400E' : '#1E40AF'
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell sx={{
+                    fontWeight: 'bold',
+                    color: item.trend.startsWith('+') ? '#DC2626' : item.trend.startsWith('-') ? '#16A34A' : '#4B5563'
+                  }}>
+                    {item.trend}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (hotspotChartType === 'pie') {
+      return (
+        <Box sx={{ width: '100%', height: 400, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={displayData}
+                dataKey="count"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={120}
+                fill="#1E3A8A"
+                label={(props: any) => `${(props.name || '').substring(0, 15)}: ${props.percentage}%`}
+              >
+                {displayData.map((_: any, idx: number) => (
+                  <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    if (hotspotChartType === 'horizontal') {
+      return (
+        <Box sx={{ width: '100%', height: Math.max(300, displayData.length * 35) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={displayData} margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis type="number" stroke="#9CA3AF" fontSize={11} />
+              <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={10} width={120} tickFormatter={(val) => val.substring(0, 20)} />
+              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+              <Bar dataKey="count" name="Crime Count" fill="#1E3A8A" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    // Default: Vertical Bar Chart
+    return (
+      <Box sx={{ width: '100%', height: 400 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={displayData} margin={{ top: 10, right: 30, left: 10, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} angle={-45} textAnchor="end" height={80} tickFormatter={(val) => val.substring(0, 20)} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Bar dataKey="count" name="Crime Count" fill="#1E3A8A" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  }, [hotspotData, hotspotDimension, hotspotChartType, hotspotLimit]);
+
+  const clusterVisualContent = React.useMemo(() => {
+    if (!clusterData) return null;
+    
+    const rankedList = clusterData.rankings[clusterDimension] || [];
+    const displayData = rankedList.slice(0, clusterLimit);
+    const hasCoords = clusterData.rankings.locations.some((l: any) => l.lat && l.lng);
+    const showMapFallback = clusterChartType === 'map' && (clusterDimension !== 'locations' || !hasCoords);
+
+    if (showMapFallback) {
+      const fallbackReason = clusterDimension !== 'locations'
+        ? 'Geographic coordinate markers are only available under "Coordinates" analysis.'
+        : 'No geographic coordinate data exists in the records for the selected filters.';
+
+      return (
+        <Box>
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {fallbackReason} Automatically falling back to Station Table View.
+          </Alert>
+          <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Police Station</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Previous Count</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Current Count</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Difference</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Growth</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Risk Level</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(clusterData.rankings.stations || []).slice(0, clusterLimit).map((item: any) => (
+                  <TableRow key={item.rank} hover>
+                    <TableCell>{item.rank}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                    <TableCell align="right">{item.previousCount}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.currentCount}</TableCell>
+                    <TableCell align="right" sx={{ color: item.difference > 0 ? '#DC2626' : item.difference < 0 ? '#16A34A' : '#4B5563', fontWeight: 'bold' }}>
+                      {item.difference > 0 ? `+${item.difference}` : item.difference}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: item.difference > 0 ? '#DC2626' : item.difference < 0 ? '#16A34A' : '#4B5563' }}>
+                      {item.difference > 0 ? `+` : ''}{item.percentage}%
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.risk}
+                        size="small"
+                        sx={{
+                          fontWeight: 'bold',
+                          bgcolor: item.risk === 'CRITICAL' ? '#FEE2E2' : item.risk === 'HIGH' ? '#FFEDD5' : item.risk === 'MEDIUM' ? '#FEF3C7' : '#E0F2FE',
+                          color: item.risk === 'CRITICAL' ? '#991B1B' : item.risk === 'HIGH' ? '#C2410C' : item.risk === 'MEDIUM' ? '#D97706' : '#0369A1'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.trend}
+                        size="small"
+                        variant="outlined"
+                        color={item.trend === 'Increasing' ? 'error' : item.trend === 'Decreasing' ? 'success' : 'default'}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      );
+    }
+
+    if (clusterChartType === 'map') {
+      return (
+        <Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, color: 'text.secondary' }}>
+            Interactive Crime Clusters Map (Top {displayData.length} Locations)
+          </Typography>
+          <div
+            id="cluster-map"
+            style={{
+              width: '100%',
+              height: '400px',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB',
+              zIndex: 1
+            }}
+          />
+        </Box>
+      );
+    }
+
+    if (clusterChartType === 'table') {
+      return (
+        <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+          <Table size="small">
+            <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  {clusterDimension === 'districts' ? 'District' :
+                   clusterDimension === 'stations' ? 'Police Station' :
+                   clusterDimension === 'locations' ? 'Coordinates / Station' :
+                   clusterDimension === 'crimeCategories' ? 'Crime Category' : 'Crime Type'}
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Previous Count</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Current Count</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Difference</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }} align="right">Growth</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Risk Level</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {displayData.map((item: any) => (
+                <TableRow key={item.rank} hover>
+                  <TableCell>{item.rank}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                  <TableCell align="right">{item.previousCount}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.currentCount}</TableCell>
+                  <TableCell align="right" sx={{ color: item.difference > 0 ? '#DC2626' : item.difference < 0 ? '#16A34A' : '#4B5563', fontWeight: 'bold' }}>
+                    {item.difference > 0 ? `+${item.difference}` : item.difference}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: item.difference > 0 ? '#DC2626' : item.difference < 0 ? '#16A34A' : '#4B5563' }}>
+                    {item.difference > 0 ? `+` : ''}{item.percentage}%
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={item.risk}
+                      size="small"
+                      sx={{
+                        fontWeight: 'bold',
+                        bgcolor: item.risk === 'CRITICAL' ? '#FEE2E2' : item.risk === 'HIGH' ? '#FFEDD5' : item.risk === 'MEDIUM' ? '#FEF3C7' : '#E0F2FE',
+                        color: item.risk === 'CRITICAL' ? '#991B1B' : item.risk === 'HIGH' ? '#C2410C' : item.risk === 'MEDIUM' ? '#D97706' : '#0369A1'
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={item.trend}
+                      size="small"
+                      variant="outlined"
+                      color={item.trend === 'Increasing' ? 'error' : item.trend === 'Decreasing' ? 'success' : 'default'}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (clusterChartType === 'line') {
+      return (
+        <Box sx={{ width: '100%', height: 400 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={displayData} margin={{ top: 10, right: 30, left: 10, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} angle={-45} textAnchor="end" height={80} tickFormatter={(val) => val.substring(0, 20)} />
+              <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+              <Legend />
+              <Line type="monotone" dataKey="previousCount" name="Previous Count" stroke="#9CA3AF" strokeWidth={2} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="currentCount" name="Current Count" stroke="#1E3A8A" strokeWidth={3} activeDot={{ r: 8 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    if (clusterChartType === 'horizontal') {
+      return (
+        <Box sx={{ width: '100%', height: Math.max(300, displayData.length * 45) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={displayData} margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis type="number" stroke="#9CA3AF" fontSize={11} />
+              <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={10} width={120} tickFormatter={(val) => val.substring(0, 20)} />
+              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+              <Legend />
+              <Bar dataKey="previousCount" name="Previous Count" fill="#9CA3AF" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="currentCount" name="Current Count" fill="#1E3A8A" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    // Default: Vertical Clustered Bar Chart
+    return (
+      <Box sx={{ width: '100%', height: 400 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={displayData} margin={{ top: 10, right: 30, left: 10, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} angle={-45} textAnchor="end" height={80} tickFormatter={(val) => val.substring(0, 20)} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            <Bar dataKey="previousCount" name="Previous Count" fill="#9CA3AF" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="currentCount" name="Current Count" fill="#1E3A8A" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  }, [clusterData, clusterDimension, clusterChartType, clusterLimit]);
 
   // Coming Soon Placeholders render
   const renderPlaceholder = (title: string, icon: React.ReactNode, description: string) => (
@@ -698,42 +1269,7 @@ const AnalyticsPage: React.FC = () => {
 
                   {/* Chart Rendering */}
                   <Box sx={{ width: '100%', height: 400 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      {activeChartType === 'Line' ? (
-                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                          <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                          <Legend />
-                          <Line type="monotone" dataKey="Crimes" stroke="#1E3A8A" strokeWidth={3} activeDot={{ r: 8 }} />
-                        </LineChart>
-                      ) : activeChartType === 'Bar' ? (
-                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                          <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                          <Legend />
-                          <Bar dataKey="Crimes" fill="#1E3A8A" radius={[4, 4, 0, 0]} barSize={activeTrendType === 'Daily' ? 8 : 32} />
-                        </BarChart>
-                      ) : (
-                        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="crimeColor" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor="#1E3A8A" stopOpacity={0.0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                          <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                          <Legend />
-                          <Area type="monotone" dataKey="Crimes" stroke="#1E3A8A" fillOpacity={1} fill="url(#crimeColor)" strokeWidth={2} />
-                        </AreaChart>
-                      )}
-                    </ResponsiveContainer>
+                    {trendChart}
                   </Box>
                 </CardContent>
               </Card>
@@ -1104,206 +1640,407 @@ const AnalyticsPage: React.FC = () => {
               {/* Main Panel Content */}
               <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
                 <CardContent sx={{ p: 3 }}>
-                  {(() => {
-                    const rankedList = hotspotData.rankings[hotspotDimension] || [];
-                    const displayData = rankedList.slice(0, hotspotLimit);
-                    const hasCoords = hotspotData.rankings.locations.some((l: any) => l.lat && l.lng);
-                    const showMapFallback = hotspotChartType === 'map' && (hotspotDimension !== 'locations' || !hasCoords);
-
-                    if (showMapFallback) {
-                      const fallbackReason = hotspotDimension !== 'locations'
-                        ? 'Geographic coordinate markers are only available under "Coordinates" analysis.'
-                        : 'No geographic coordinate data exists in the records for the selected filters.';
-                      
-                      return (
-                        <Box>
-                          <Alert severity="warning" sx={{ mb: 3 }}>
-                            {fallbackReason} Automatically falling back to Station Table View.
-                          </Alert>
-                          <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
-                            <Table size="small">
-                              <TableHead sx={{ bgcolor: '#F9FAFB' }}>
-                                <TableRow>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Police Station</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Crime Count</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }} align="right">Percentage</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Density</TableCell>
-                                  <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {(hotspotData.rankings.stations || []).slice(0, hotspotLimit).map((item: any) => (
-                                  <TableRow key={item.rank} hover>
-                                    <TableCell>{item.rank}</TableCell>
-                                    <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.count}</TableCell>
-                                    <TableCell align="right">{item.percentage}%</TableCell>
-                                    <TableCell>
-                                      <Chip
-                                        label={item.density}
-                                        size="small"
-                                        sx={{
-                                          fontWeight: 'bold',
-                                          bgcolor: item.density === 'High' ? '#FEE2E2' : item.density === 'Medium' ? '#FEF3C7' : '#DBEAFE',
-                                          color: item.density === 'High' ? '#991B1B' : item.density === 'Medium' ? '#92400E' : '#1E40AF'
-                                        }}
-                                      />
-                                    </TableCell>
-                                    <TableCell sx={{
-                                      fontWeight: 'bold',
-                                      color: item.trend.startsWith('+') ? '#DC2626' : item.trend.startsWith('-') ? '#16A34A' : '#4B5563'
-                                    }}>
-                                      {item.trend}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </Box>
-                      );
-                    }
-
-                    if (hotspotChartType === 'map') {
-                      return (
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2, color: 'text.secondary' }}>
-                            Interactive Crime Hotspots Map (Top {displayData.length} Locations)
-                          </Typography>
-                          <div
-                            id="hotspot-map"
-                            style={{
-                              width: '100%',
-                              height: '400px',
-                              borderRadius: '8px',
-                              border: '1px solid #E5E7EB',
-                              zIndex: 1
-                            }}
-                          />
-                        </Box>
-                      );
-                    }
-
-                    if (hotspotChartType === 'table') {
-                      return (
-                        <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
-                          <Table size="small">
-                            <TableHead sx={{ bgcolor: '#F9FAFB' }}>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                  {hotspotDimension === 'districts' ? 'District' :
-                                   hotspotDimension === 'stations' ? 'Police Station' :
-                                   hotspotDimension === 'locations' ? 'Coordinates / Station' :
-                                   hotspotDimension === 'crimeCategories' ? 'Crime Category' : 'Crime Type'}
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Crime Count</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Percentage</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Density</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Trend</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {displayData.map((item: any) => (
-                                <TableRow key={item.rank} hover>
-                                  <TableCell>{item.rank}</TableCell>
-                                  <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
-                                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.count}</TableCell>
-                                  <TableCell align="right">{item.percentage}%</TableCell>
-                                  <TableCell>
-                                    <Chip
-                                      label={item.density}
-                                      size="small"
-                                      sx={{
-                                        fontWeight: 'bold',
-                                        bgcolor: item.density === 'High' ? '#FEE2E2' : item.density === 'Medium' ? '#FEF3C7' : '#DBEAFE',
-                                        color: item.density === 'High' ? '#991B1B' : item.density === 'Medium' ? '#92400E' : '#1E40AF'
-                                      }}
-                                    />
-                                  </TableCell>
-                                  <TableCell sx={{
-                                    fontWeight: 'bold',
-                                    color: item.trend.startsWith('+') ? '#DC2626' : item.trend.startsWith('-') ? '#16A34A' : '#4B5563'
-                                  }}>
-                                    {item.trend}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      );
-                    }
-
-                    if (hotspotChartType === 'pie') {
-                      return (
-                        <Box sx={{ width: '100%', height: 400, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={displayData}
-                                dataKey="count"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={120}
-                                fill="#1E3A8A"
-                                label={(props: any) => `${(props.name || '').substring(0, 15)}: ${props.percentage}%`}
-                              >
-                                {displayData.map((_: any, idx: number) => (
-                                  <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                              <Legend />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </Box>
-                      );
-                    }
-
-                    if (hotspotChartType === 'horizontal') {
-                      return (
-                        <Box sx={{ width: '100%', height: Math.max(300, displayData.length * 35) }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart layout="vertical" data={displayData} margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                              <XAxis type="number" stroke="#9CA3AF" fontSize={11} />
-                              <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={10} width={120} tickFormatter={(val) => val.substring(0, 20)} />
-                              <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                              <Bar dataKey="count" name="Crime Count" fill="#1E3A8A" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </Box>
-                      );
-                    }
-
-                    // Default: Vertical Bar Chart
-                    return (
-                      <Box sx={{ width: '100%', height: 400 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={displayData} margin={{ top: 10, right: 30, left: 10, bottom: 60 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} angle={-45} textAnchor="end" height={80} tickFormatter={(val) => val.substring(0, 20)} />
-                            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                            <Bar dataKey="count" name="Crime Count" fill="#1E3A8A" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </Box>
-                    );
-                  })()}
+                  {hotspotVisualContent}
                 </CardContent>
               </Card>
             </>
           )}
         </>
       )}
-      {activeTab === 2 && renderPlaceholder(
-        'Crime Clusters & Associations',
-        <ClusterIcon sx={{ fontSize: 40 }} />,
-        'Apply advanced AI models to identify cross-boundary crime rings, MO associations, and suspect group behaviors. Coming in the next stabilization cycle.'
+      {activeTab === 2 && (
+        <>
+          {/* Optional Filters Form Card */}
+          <Card sx={{ mb: 3.5, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box component="form" onSubmit={handleApplyClusterFilters}>
+                <Grid container spacing={2.5}>
+                  
+                  {/* Interval Selector */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-interval-label">Comparison Period</InputLabel>
+                      <Select
+                        labelId="cluster-interval-label"
+                        value={clusterInterval}
+                        label="Comparison Period"
+                        onChange={(e) => setClusterInterval(e.target.value)}
+                      >
+                        <MenuItem value="month">Month-over-Month (MoM)</MenuItem>
+                        <MenuItem value="quarter">Quarter-over-Quarter (QoQ)</MenuItem>
+                        <MenuItem value="year">Year-over-Year (YoY)</MenuItem>
+                        <MenuItem value="week">Week-over-Week (WoW)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* District Option */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-district-label">District</InputLabel>
+                      <Select
+                        labelId="cluster-district-label"
+                        value={clusterDistrict}
+                        label="District"
+                        onChange={(e) => {
+                          setClusterDistrict(e.target.value);
+                          setClusterStation('');
+                        }}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {filterOpts?.districts.map((d) => (
+                          <MenuItem key={d.ROWID} value={d.ROWID}>{d.DistrictName}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Station Option */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-station-label">Police Station</InputLabel>
+                      <Select
+                        labelId="cluster-station-label"
+                        value={clusterStation}
+                        label="Police Station"
+                        onChange={(e) => setClusterStation(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {getClusterFilteredStations().map((s) => (
+                          <MenuItem key={s.ROWID} value={s.ROWID}>{s.UnitName}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Crime Category Option */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-category-label">Crime Category</InputLabel>
+                      <Select
+                        labelId="cluster-category-label"
+                        value={clusterCrimeCategory}
+                        label="Crime Category"
+                        onChange={(e) => {
+                          setClusterCrimeCategory(e.target.value);
+                          setClusterCrimeType('');
+                        }}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {filterOpts?.crimeCategories?.map((c) => (
+                          <MenuItem key={c.ROWID} value={c.ROWID}>{c.CrimeGroupName}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Specific Crime Type Option */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-type-label">Crime Type</InputLabel>
+                      <Select
+                        labelId="cluster-type-label"
+                        value={clusterCrimeType}
+                        label="Crime Type"
+                        onChange={(e) => setClusterCrimeType(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {getClusterFilteredSubHeads().map((sh) => (
+                          <MenuItem key={sh.ROWID} value={sh.ROWID}>{sh.CrimeHeadName}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Date Range Start */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      label="Start Date"
+                      type="date"
+                      value={clusterStartDate}
+                      onChange={(e) => setClusterStartDate(e.target.value)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Grid>
+
+                  {/* Date Range End */}
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                      label="End Date"
+                      type="date"
+                      value={clusterEndDate}
+                      onChange={(e) => setClusterEndDate(e.target.value)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Grid>
+
+                  {/* Optional Year Select */}
+                  <Grid size={{ xs: 12, md: 1.5 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-year-label">Year</InputLabel>
+                      <Select
+                        labelId="cluster-year-label"
+                        value={clusterYear}
+                        label="Year"
+                        onChange={(e) => setClusterYear(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        <MenuItem value="2024">2024</MenuItem>
+                        <MenuItem value="2023">2023</MenuItem>
+                        <MenuItem value="2022">2022</MenuItem>
+                        <MenuItem value="2021">2021</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Optional Month Select */}
+                  <Grid size={{ xs: 12, md: 1.5 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="cluster-month-label">Month</InputLabel>
+                      <Select
+                        labelId="cluster-month-label"
+                        value={clusterMonth}
+                        label="Month"
+                        onChange={(e) => setClusterMonth(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        <MenuItem value="1">January</MenuItem>
+                        <MenuItem value="2">February</MenuItem>
+                        <MenuItem value="3">March</MenuItem>
+                        <MenuItem value="4">April</MenuItem>
+                        <MenuItem value="5">May</MenuItem>
+                        <MenuItem value="6">June</MenuItem>
+                        <MenuItem value="7">July</MenuItem>
+                        <MenuItem value="8">August</MenuItem>
+                        <MenuItem value="9">September</MenuItem>
+                        <MenuItem value="10">October</MenuItem>
+                        <MenuItem value="11">November</MenuItem>
+                        <MenuItem value="12">December</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Filter Action Buttons */}
+                  <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, alignItems: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<ClearIcon />}
+                      onClick={handleClearClusterFilters}
+                      size="small"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      type="submit"
+                      startIcon={<FilterIcon />}
+                      size="small"
+                    >
+                      Apply Filters
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Loading Indicator */}
+          {clusterLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
+              <CircularProgress size={40} sx={{ mr: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                Analyzing database historical crime clusters...
+              </Typography>
+            </Box>
+          )}
+
+          {/* Error Alert */}
+          {clusterError && !clusterLoading && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {clusterError}
+            </Alert>
+          )}
+
+          {/* Insufficient Historical Data Alert */}
+          {!clusterLoading && !clusterError && clusterData && clusterData.totalRecords === 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Not enough historical data to detect crime clusters.
+            </Alert>
+          )}
+
+          {/* Dashboard Visual Panels */}
+          {!clusterLoading && !clusterError && clusterData && clusterData.totalRecords > 0 && (
+            <>
+              {/* Summary Metric Cards */}
+              <Grid container spacing={2} sx={{ mb: 3.5 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        ACTIVE CLUSTERS
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                        {clusterData.summary.clusterCount}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        AVERAGE GROWTH
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                        +{clusterData.summary.avgGrowth}%
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        HIGHEST GROWTH DISTRICT
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
+                        {clusterData.summary.highestGrowthDistrict}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        HIGHEST GROWTH STATION
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                        {clusterData.summary.highestGrowthStation}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        LARGEST CRIME INCREASE
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                        {clusterData.summary.largestCrimeIncrease}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        FASTEST GROWING CRIME TYPE
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                        {clusterData.summary.fastestGrowingCrimeType}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Insights Card */}
+              <Card sx={{ mb: 3.5, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TrendingUpIcon fontSize="small" /> Automated Cluster Intelligence & Insights
+                  </Typography>
+                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#1E3A8A', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
+                    {clusterData.insights.map((insight: string, idx: number) => (
+                      <li key={idx} style={{ marginBottom: idx === clusterData.insights.length - 1 ? 0 : '6px' }}>{insight}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Controls Card */}
+              <Card sx={{ mb: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Grid container spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Grid size={{ xs: 12, md: 5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          Analyze By:
+                        </Typography>
+                        <ToggleButtonGroup
+                          size="small"
+                          value={clusterDimension}
+                          exclusive
+                          onChange={(_, val) => val && setClusterDimension(val)}
+                          color="primary"
+                        >
+                          <ToggleButton value="districts" sx={{ fontWeight: 'bold' }}>District</ToggleButton>
+                          <ToggleButton value="stations" sx={{ fontWeight: 'bold' }}>Station</ToggleButton>
+                          <ToggleButton value="locations" sx={{ fontWeight: 'bold' }}>Coordinates</ToggleButton>
+                          <ToggleButton value="crimeCategories" sx={{ fontWeight: 'bold' }}>Category</ToggleButton>
+                          <ToggleButton value="crimeTypes" sx={{ fontWeight: 'bold' }}>Type</ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: { xs: 'flex-start', md: 'center' } }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          Show:
+                        </Typography>
+                        <ToggleButtonGroup
+                          size="small"
+                          value={clusterChartType}
+                          exclusive
+                          onChange={(_, val) => val && setClusterChartType(val)}
+                          color="primary"
+                        >
+                          <ToggleButton value="bar" title="Clustered Bar Chart"><BarChartIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="horizontal" title="Horizontal Clustered Chart"><PinIcon fontSize="small" style={{ transform: 'rotate(90deg)' }} /></ToggleButton>
+                          <ToggleButton value="line" title="Line Comparison Chart"><LineChartIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="table" title="Table View"><TableIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="map" title="Map View"><MapIcon fontSize="small" /></ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'flex-end' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          Limit:
+                        </Typography>
+                        <ToggleButtonGroup
+                          size="small"
+                          value={clusterLimit}
+                          exclusive
+                          onChange={(_, val) => val && setClusterLimit(val)}
+                          color="primary"
+                        >
+                          <ToggleButton value={5} sx={{ fontWeight: 'bold' }}>Top 5</ToggleButton>
+                          <ToggleButton value={10} sx={{ fontWeight: 'bold' }}>Top 10</ToggleButton>
+                          <ToggleButton value={20} sx={{ fontWeight: 'bold' }}>Top 20</ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* Main Panel Content */}
+              <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 3 }}>
+                  {clusterVisualContent}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
       )}
       {activeTab === 3 && renderPlaceholder(
         'Seasonal Analysis & Forecasting',
