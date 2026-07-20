@@ -67,5 +67,11 @@ export const intelligenceService = {
       params: filters
     });
     return response.data;
+  },
+  getSeasonalData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/seasonal', {
+      params: filters
+    });
+    return response.data;
   }
 };

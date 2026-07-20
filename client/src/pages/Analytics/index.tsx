@@ -112,6 +112,22 @@ const AnalyticsPage: React.FC = () => {
   const [clusterLimit, setClusterLimit] = useState<number>(10);
   const clusterMapRef = React.useRef<any>(null);
 
+  // Seasonal Filters & Analytics States
+  const [seasonDistrict, setSeasonDistrict] = useState('');
+  const [seasonStation, setSeasonStation] = useState('');
+  const [seasonCrimeCategory, setSeasonCrimeCategory] = useState('');
+  const [seasonCrimeType, setSeasonCrimeType] = useState('');
+  const [seasonStartDate, setSeasonStartDate] = useState('');
+  const [seasonEndDate, setSeasonEndDate] = useState('');
+  const [seasonYear, setSeasonYear] = useState('');
+  const [seasonMonth, setSeasonMonth] = useState('');
+  const [seasonSeason, setSeasonSeason] = useState('');
+  const [seasonalLoading, setSeasonalLoading] = useState(false);
+  const [seasonalError, setSeasonalError] = useState('');
+  const [seasonalData, setSeasonalData] = useState<any>(null);
+  const [seasonActiveDimension, setSeasonActiveDimension] = useState<string>('monthly'); // monthly, quarterly, seasonal, weekdayWeekend, dayOfWeek, yearWiseSeasonal, crimeTypeSeason, districtSeason, stationSeason
+  const [seasonChartType, setSeasonChartType] = useState<string>('bar'); // bar, line, area, pie, heatmap
+
   // Trend Data States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -207,6 +223,31 @@ const AnalyticsPage: React.FC = () => {
     }
   };
 
+  // Load Seasonal Data
+  const fetchSeasonalData = async () => {
+    setSeasonalLoading(true);
+    setSeasonalError('');
+    try {
+      const filters = {
+        district: seasonDistrict || undefined,
+        policeStation: seasonStation || undefined,
+        crimeCategory: seasonCrimeCategory || undefined,
+        crimeType: seasonCrimeType || undefined,
+        startDate: seasonStartDate || undefined,
+        endDate: seasonEndDate || undefined,
+        year: seasonYear || undefined,
+        month: seasonMonth || undefined,
+        season: seasonSeason || undefined
+      };
+      const data = await intelligenceService.getSeasonalData(filters);
+      setSeasonalData(data);
+    } catch (err: any) {
+      setSeasonalError(err.response?.data?.message || 'Failed to fetch seasonal crime analysis data.');
+    } finally {
+      setSeasonalLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 0) {
       fetchTrendData();
@@ -214,6 +255,8 @@ const AnalyticsPage: React.FC = () => {
       fetchHotspotData();
     } else if (activeTab === 2) {
       fetchClusterData();
+    } else if (activeTab === 3) {
+      fetchSeasonalData();
     }
   }, [activeTab, clusterInterval]);
 
@@ -433,6 +476,40 @@ const AnalyticsPage: React.FC = () => {
     return filterOpts.crimeSubHeads.filter(s => s.CrimeHeadID === category.ROWID);
   };
 
+  const handleApplySeasonalFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchSeasonalData();
+  };
+
+  const handleClearSeasonalFilters = () => {
+    setSeasonDistrict('');
+    setSeasonStation('');
+    setSeasonCrimeCategory('');
+    setSeasonCrimeType('');
+    setSeasonStartDate('');
+    setSeasonEndDate('');
+    setSeasonYear('');
+    setSeasonMonth('');
+    setSeasonSeason('');
+    setTimeout(() => {
+      fetchSeasonalData();
+    }, 50);
+  };
+
+  const getSeasonalFilteredStations = () => {
+    if (!filterOpts) return [];
+    if (!seasonDistrict) return filterOpts.stations;
+    return filterOpts.stations.filter(s => s.DistrictID === seasonDistrict);
+  };
+
+  const getSeasonalFilteredSubHeads = () => {
+    if (!filterOpts || !filterOpts.crimeSubHeads) return [];
+    if (!seasonCrimeCategory) return filterOpts.crimeSubHeads;
+    const category = filterOpts.crimeCategories?.find(c => c.ROWID === seasonCrimeCategory);
+    if (!category) return filterOpts.crimeSubHeads;
+    return filterOpts.crimeSubHeads.filter(s => s.CrimeHeadID === category.ROWID);
+  };
+
   // Format Recharts Data
   const getChartData = () => {
     if (!trendData || !trendData.trends || !trendData.trends[activeTrendType]) {
@@ -500,6 +577,259 @@ const AnalyticsPage: React.FC = () => {
       </ResponsiveContainer>
     );
   }, [chartData, activeChartType, activeTrendType]);
+
+  const getSeasonalChartData = () => {
+    if (!seasonalData || !seasonalData.distributions) return [];
+    
+    const dists = seasonalData.distributions;
+    switch (seasonActiveDimension) {
+      case 'monthly':
+        return dists.monthly.map((d: any) => ({ name: d.month, Crimes: d.count }));
+      case 'quarterly':
+        return dists.quarterly.map((d: any) => ({ name: d.quarter, Crimes: d.count }));
+      case 'seasonal':
+        return dists.seasonal.map((d: any) => ({ name: d.season, Crimes: d.count }));
+      case 'weekdayWeekend':
+        return dists.weekdayWeekend.map((d: any) => ({ name: d.type, Crimes: d.count }));
+      case 'dayOfWeek':
+        return dists.dayOfWeek.map((d: any) => ({ name: d.day, Crimes: d.count }));
+      case 'yearWiseSeasonal':
+        return dists.yearWiseSeasonal.map((d: any) => ({ name: d.year, ...d }));
+      case 'crimeTypeSeason':
+        return dists.crimeTypeSeason.map((d: any) => ({ name: d.crimeCategory, ...d }));
+      case 'districtSeason':
+        return dists.districtSeason.map((d: any) => ({ name: d.district, ...d }));
+      case 'stationSeason':
+        return dists.stationSeason.map((d: any) => ({ name: d.station, ...d }));
+      default:
+        return [];
+    }
+  };
+
+  const seasonChartData = getSeasonalChartData();
+
+  const seasonChart = React.useMemo(() => {
+    if (!seasonChartData || seasonChartData.length === 0) return null;
+    const isMultiSeries = ['yearWiseSeasonal', 'crimeTypeSeason', 'districtSeason', 'stationSeason'].includes(seasonActiveDimension);
+    const SEASONS = ['Winter', 'Summer', 'Monsoon', 'Autumn'];
+
+    if (seasonChartType === 'line') {
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={seasonChartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            {isMultiSeries ? (
+              SEASONS.map((season, idx) => (
+                <Line key={season} type="monotone" dataKey={season} stroke={COLORS[idx % COLORS.length]} strokeWidth={2.5} activeDot={{ r: 6 }} />
+              ))
+            ) : (
+              <Line type="monotone" dataKey="Crimes" stroke="#1E3A8A" strokeWidth={3} activeDot={{ r: 8 }} />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (seasonChartType === 'area') {
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={seasonChartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+            <Legend />
+            {isMultiSeries ? (
+              SEASONS.map((season, idx) => (
+                <Area key={season} type="monotone" dataKey={season} stroke={COLORS[idx % COLORS.length]} fill={COLORS[idx % COLORS.length]} fillOpacity={0.15} />
+              ))
+            ) : (
+              <Area type="monotone" dataKey="Crimes" stroke="#1E3A8A" fill="#1E3A8A" fillOpacity={0.2} strokeWidth={2} />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (seasonChartType === 'pie') {
+      if (isMultiSeries) {
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 3 }}>
+            <Alert severity="info">
+              Pie charts are only available for single-series distributions. Please select Monthly, Quarter-wise, Season-wise, Day-of-week, or Weekday/Weekend.
+            </Alert>
+          </Box>
+        );
+      }
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={seasonChartData} dataKey="Crimes" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
+              {seasonChartData.map((_: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (seasonChartType === 'heatmap') {
+      if (!seasonalData?.heatmaps) return null;
+      const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      if (seasonActiveDimension === 'monthly' || ['crimeTypeSeason', 'districtSeason', 'stationSeason'].includes(seasonActiveDimension)) {
+        const monthlyHeatmap = seasonalData.heatmaps.monthlyHeatmap || [];
+        const categories = [...new Set(monthlyHeatmap.map((d: any) => d.category))] as string[];
+        const maxCount = Math.max(...monthlyHeatmap.map((d: any) => d.count), 1);
+
+        return (
+          <Box sx={{ overflowX: 'auto', py: 1 }}>
+            <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', minWidth: 650 }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', borderRight: '1px solid #E5E7EB' }}>Month</TableCell>
+                    {categories.map(cat => (
+                      <TableCell key={cat} align="center" sx={{ fontWeight: 'bold', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        {cat}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {MONTH_NAMES.map(month => {
+                    return (
+                      <TableRow key={month} hover>
+                        <TableCell sx={{ fontWeight: 'bold', fontSize: '12px', borderRight: '1px solid #E5E7EB', bgcolor: '#F9FAFB' }}>
+                          {month}
+                        </TableCell>
+                        {categories.map(cat => {
+                          const cell = monthlyHeatmap.find((d: any) => d.month === month && d.category === cat);
+                          const count = cell ? cell.count : 0;
+                          const intensity = count > 0 ? 95 - (count / maxCount) * 55 : 100;
+                          const bgColor = count > 0 ? `hsl(220, 85%, ${intensity}%)` : '#FFFFFF';
+                          const textColor = count > 0 && intensity < 60 ? '#FFFFFF' : '#1E293B';
+                          return (
+                            <TableCell
+                              key={cat}
+                              align="center"
+                              title={`${month} - ${cat}: ${count} cases`}
+                              sx={{
+                                bgcolor: bgColor,
+                                color: textColor,
+                                fontWeight: count > 0 ? 'bold' : 'normal',
+                                fontSize: '12px',
+                                borderRight: '1px solid #F3F4F6',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                  filter: 'brightness(0.9)',
+                                  cursor: 'pointer'
+                                }
+                              }}
+                            >
+                              {count}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+      } else {
+        const calendarHeatmap = seasonalData.heatmaps.calendarHeatmap || [];
+        const maxCount = Math.max(...calendarHeatmap.map((d: any) => d.count), 1);
+
+        return (
+          <Box sx={{ overflowX: 'auto', py: 1 }}>
+            <TableContainer component={Paper} sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', minWidth: 600 }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', borderRight: '1px solid #E5E7EB' }}>Month</TableCell>
+                    {DAY_NAMES.map(day => (
+                      <TableCell key={day} align="center" sx={{ fontWeight: 'bold', fontSize: '11px' }}>
+                        {day}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {MONTH_NAMES.map(month => {
+                    return (
+                      <TableRow key={month} hover>
+                        <TableCell sx={{ fontWeight: 'bold', fontSize: '12px', borderRight: '1px solid #E5E7EB', bgcolor: '#F9FAFB' }}>
+                          {month}
+                        </TableCell>
+                        {DAY_NAMES.map(day => {
+                          const cell = calendarHeatmap.find((d: any) => d.month === month && d.day === day);
+                          const count = cell ? cell.count : 0;
+                          const intensity = count > 0 ? 95 - (count / maxCount) * 55 : 100;
+                          const bgColor = count > 0 ? `hsl(210, 85%, ${intensity}%)` : '#FFFFFF';
+                          const textColor = count > 0 && intensity < 60 ? '#FFFFFF' : '#1E293B';
+                          return (
+                            <TableCell
+                              key={day}
+                              align="center"
+                              title={`${month} - ${day}: ${count} cases`}
+                              sx={{
+                                bgcolor: bgColor,
+                                color: textColor,
+                                fontWeight: count > 0 ? 'bold' : 'normal',
+                                fontSize: '12px',
+                                borderRight: '1px solid #F3F4F6',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                  filter: 'brightness(0.9)',
+                                  cursor: 'pointer'
+                                }
+                              }}
+                            >
+                              {count}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+      }
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={seasonChartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+          <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+          <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} />
+          <Tooltip contentStyle={{ borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+          <Legend />
+          {isMultiSeries ? (
+            SEASONS.map((season, idx) => (
+              <Bar key={season} dataKey={season} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} barSize={20} />
+            ))
+          ) : (
+            <Bar dataKey="Crimes" fill="#1E3A8A" radius={[4, 4, 0, 0]} barSize={32} />
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }, [seasonChartData, seasonChartType, seasonActiveDimension, seasonalData]);
 
   const hotspotVisualContent = React.useMemo(() => {
     if (!hotspotData) return null;
@@ -900,36 +1230,6 @@ const AnalyticsPage: React.FC = () => {
       </Box>
     );
   }, [clusterData, clusterDimension, clusterChartType, clusterLimit]);
-
-  // Coming Soon Placeholders render
-  const renderPlaceholder = (title: string, icon: React.ReactNode, description: string) => (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '400px',
-        bgcolor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        borderRadius: '8px',
-        p: 4,
-        textAlign: 'center',
-        mt: 2
-      }}
-    >
-      <Box sx={{ p: 2, borderRadius: '50%', bgcolor: '#eff6ff', color: 'primary.main', mb: 2 }}>
-        {icon}
-      </Box>
-      <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
-        {title}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '450px', mb: 3 }}>
-        {description}
-      </Typography>
-      <Chip label="Coming Soon" color="primary" variant="outlined" sx={{ fontWeight: 'bold' }} />
-    </Box>
-  );
 
   return (
     <Box sx={{ p: 4, height: '100%', overflowY: 'auto' }}>
@@ -2042,10 +2342,403 @@ const AnalyticsPage: React.FC = () => {
           )}
         </>
       )}
-      {activeTab === 3 && renderPlaceholder(
-        'Seasonal Analysis & Forecasting',
-        <SeasonalIcon sx={{ fontSize: 40 }} />,
-        'Identify cyclical crime escalations based on holidays, seasons, weather changes, and local events to optimize policing resources. Coming in the next stabilization cycle.'
+      {activeTab === 3 && (
+        <>
+          {/* Filters Form */}
+          <Card sx={{ mb: 3, boxShadow: 'none', border: '1px solid #E5E7EB' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Box component="form" onSubmit={handleApplySeasonalFilters}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <FilterIcon fontSize="small" color="primary" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                    Optional Filters
+                  </Typography>
+                </Box>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>District</InputLabel>
+                      <Select
+                        value={seasonDistrict}
+                        label="District"
+                        onChange={(e) => {
+                          setSeasonDistrict(e.target.value);
+                          setSeasonStation('');
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>None (All Districts)</em>
+                        </MenuItem>
+                        {filterOpts?.districts.map(d => (
+                          <MenuItem key={d.ROWID} value={d.ROWID}>
+                            {d.DistrictName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Police Station</InputLabel>
+                      <Select
+                        value={seasonStation}
+                        label="Police Station"
+                        onChange={(e) => setSeasonStation(e.target.value)}
+                      >
+                        <MenuItem value="">
+                          <em>None (All Stations)</em>
+                        </MenuItem>
+                        {getSeasonalFilteredStations().map(s => (
+                          <MenuItem key={s.ROWID} value={s.ROWID}>
+                            {s.UnitName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Crime Category</InputLabel>
+                      <Select
+                        value={seasonCrimeCategory}
+                        label="Crime Category"
+                        onChange={(e) => {
+                          setSeasonCrimeCategory(e.target.value);
+                          setSeasonCrimeType('');
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>None (All Categories)</em>
+                        </MenuItem>
+                        {filterOpts?.crimeCategories?.map(c => (
+                          <MenuItem key={c.ROWID} value={c.ROWID}>
+                            {c.CrimeGroupName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Crime Type</InputLabel>
+                      <Select
+                        value={seasonCrimeType}
+                        label="Crime Type"
+                        onChange={(e) => setSeasonCrimeType(e.target.value)}
+                      >
+                        <MenuItem value="">
+                          <em>None (All Types)</em>
+                        </MenuItem>
+                        {getSeasonalFilteredSubHeads().map(s => (
+                          <MenuItem key={s.ROWID} value={s.ROWID}>
+                            {s.CrimeHeadName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Season</InputLabel>
+                      <Select
+                        value={seasonSeason}
+                        label="Season"
+                        onChange={(e) => setSeasonSeason(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None (All)</em></MenuItem>
+                        <MenuItem value="Winter">Winter</MenuItem>
+                        <MenuItem value="Summer">Summer</MenuItem>
+                        <MenuItem value="Monsoon">Monsoon</MenuItem>
+                        <MenuItem value="Autumn">Autumn</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Month</InputLabel>
+                      <Select
+                        value={seasonMonth}
+                        label="Month"
+                        onChange={(e) => setSeasonMonth(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None (All)</em></MenuItem>
+                        {[
+                          { val: '1', label: 'Jan' },
+                          { val: '2', label: 'Feb' },
+                          { val: '3', label: 'Mar' },
+                          { val: '4', label: 'Apr' },
+                          { val: '5', label: 'May' },
+                          { val: '6', label: 'Jun' },
+                          { val: '7', label: 'Jul' },
+                          { val: '8', label: 'Aug' },
+                          { val: '9', label: 'Sep' },
+                          { val: '10', label: 'Oct' },
+                          { val: '11', label: 'Nov' },
+                          { val: '12', label: 'Dec' }
+                        ].map(m => (
+                          <MenuItem key={m.val} value={m.val}>{m.label}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Year</InputLabel>
+                      <Select
+                        value={seasonYear}
+                        label="Year"
+                        onChange={(e) => setSeasonYear(e.target.value)}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {['2021', '2022', '2023', '2024', '2025'].map(y => (
+                          <MenuItem key={y} value={y}>{y}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Date Picker Range */}
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Start Date"
+                      type="date"
+                      value={seasonStartDate}
+                      onChange={(e) => setSeasonStartDate(e.target.value)}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="End Date"
+                      type="date"
+                      value={seasonEndDate}
+                      onChange={(e) => setSeasonEndDate(e.target.value)}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Grid>
+
+                  {/* Form Actions */}
+                  <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, alignItems: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<ClearIcon />}
+                      onClick={handleClearSeasonalFilters}
+                      size="small"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      type="submit"
+                      startIcon={<FilterIcon />}
+                      size="small"
+                    >
+                      Apply Filters
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Loading Indicator */}
+          {seasonalLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
+              <CircularProgress size={40} sx={{ mr: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                Analyzing database historical seasonal patterns...
+              </Typography>
+            </Box>
+          )}
+
+          {/* Error Alert */}
+          {seasonalError && !seasonalLoading && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {seasonalError}
+            </Alert>
+          )}
+
+          {/* Insufficient Historical Data Alert */}
+          {!seasonalLoading && !seasonalError && seasonalData && seasonalData.totalRecords === 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Not enough historical data available for seasonal analysis.
+            </Alert>
+          )}
+
+          {/* Dashboard Visual Panels */}
+          {!seasonalLoading && !seasonalError && seasonalData && seasonalData.totalRecords > 0 && (
+            <>
+              {/* Summary Metric Cards */}
+              <Grid container spacing={2} sx={{ mb: 3.5 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        PEAK SEASON
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                        {seasonalData.summary.highestCrimeSeason}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        LOWEST SEASON
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                        {seasonalData.summary.lowestCrimeSeason}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        PEAK MONTH
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                        {seasonalData.summary.highestCrimeMonth}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        PEAK WEEKDAY
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
+                        {seasonalData.summary.highestCrimeWeekday}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        WEEKEND CRIMES
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
+                        {seasonalData.summary.highestCrimeWeekendCount}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                        PEAK SEASON CRIME
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                        {seasonalData.summary.mostCommonSeasonalCrimeType}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Insights Card */}
+              <Card sx={{ mb: 3.5, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TrendingUpIcon fontSize="small" /> Automated Seasonal Intelligence & Insights
+                  </Typography>
+                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#1E3A8A', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
+                    {seasonalData.insights.map((insight: string, idx: number) => (
+                      <li key={idx} style={{ marginBottom: idx === seasonalData.insights.length - 1 ? 0 : '6px' }}>{insight}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Controls Card */}
+              <Card sx={{ mb: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Grid container spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Grid size={{ xs: 12, lg: 7.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          Analyze By:
+                        </Typography>
+                        <ToggleButtonGroup
+                          size="small"
+                          value={seasonActiveDimension}
+                          exclusive
+                          onChange={(_, val) => val && setSeasonActiveDimension(val)}
+                          color="primary"
+                        >
+                          <ToggleButton value="monthly" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Month</ToggleButton>
+                          <ToggleButton value="quarterly" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Quarter</ToggleButton>
+                          <ToggleButton value="seasonal" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Season</ToggleButton>
+                          <ToggleButton value="weekdayWeekend" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Weekend</ToggleButton>
+                          <ToggleButton value="dayOfWeek" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Weekday</ToggleButton>
+                          <ToggleButton value="yearWiseSeasonal" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Year-Seasonal</ToggleButton>
+                          <ToggleButton value="crimeTypeSeason" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Crime-Season</ToggleButton>
+                          <ToggleButton value="districtSeason" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Dist-Season</ToggleButton>
+                          <ToggleButton value="stationSeason" sx={{ fontWeight: 'bold', fontSize: '11px', px: 1 }}>Station-Season</ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12, lg: 4.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: { xs: 'flex-start', lg: 'flex-end' } }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          Show:
+                        </Typography>
+                        <ToggleButtonGroup
+                          size="small"
+                          value={seasonChartType}
+                          exclusive
+                          onChange={(_, val) => val && setSeasonChartType(val)}
+                          color="primary"
+                        >
+                          <ToggleButton value="bar" title="Bar Chart"><BarChartIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="line" title="Line Chart"><LineChartIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="area" title="Area Chart"><TimelineIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="pie" title="Pie Chart"><PieChartIcon fontSize="small" /></ToggleButton>
+                          <ToggleButton value="heatmap" title="Heatmap View"><TableIcon fontSize="small" /></ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* Main Panel Content */}
+              <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 3, minHeight: 400 }}>
+                  <Box sx={{ width: '100%', height: 400 }}>
+                    {seasonChart}
+                  </Box>
+                </CardContent>
+              </Card>
+
+              {/* Event Calendar Status box */}
+              <Card sx={{ mt: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary', mb: 1 }}>
+                    Holidays / Festivals / Elections Calendar
+                  </Typography>
+                  <Alert severity="info" sx={{ py: 0.5 }}>
+                    No event calendar configured.
+                  </Alert>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
       )}
     </Box>
   );

@@ -1,5 +1,7 @@
 'use strict';
 
+const seasonConfig = require('../config/seasonal.config');
+
 class AnalyticsService {
   constructor(zcql) {
     this.zcql = zcql;
@@ -951,6 +953,379 @@ class AnalyticsService {
     }
 
     return 'other';
+  }
+
+  /**
+   * Computes Seasonal Analysis distributions, heatmaps, summary metrics, and insights
+   */
+  async getSeasonalData(filters) {
+    const { startDate, endDate, crimeCategory, crimeType, district, policeStation, year, month, season } = filters;
+    const whereClauses = [];
+
+    // Filter by Date Range
+    if (startDate) {
+      whereClauses.push(`CrimeRegisteredDate >= '${startDate}'`);
+    }
+    if (endDate) {
+      whereClauses.push(`CrimeRegisteredDate <= '${endDate}'`);
+    }
+
+    // Filter by Crime Category (CrimeMajorHeadID)
+    if (crimeCategory) {
+      whereClauses.push(`CrimeMajorHeadID = '${crimeCategory}'`);
+    }
+
+    // Filter by Crime Type (CrimeMinorHeadID)
+    if (crimeType) {
+      whereClauses.push(`CrimeMinorHeadID = '${crimeType}'`);
+    }
+
+    // Filter by Police Station
+    if (policeStation) {
+      whereClauses.push(`PoliceStationID = '${policeStation}'`);
+    }
+
+    // Filter by District
+    if (district && !policeStation) {
+      const stations = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE DistrictID = '${district}'`);
+      if (stations.length > 0) {
+        const stationRowIds = stations.map(s => `'${s.ROWID}'`).join(',');
+        whereClauses.push(`PoliceStationID IN (${stationRowIds})`);
+      } else {
+        whereClauses.push("PoliceStationID = '0'");
+      }
+    }
+
+    // Filter by Year
+    if (year) {
+      whereClauses.push(`CrimeRegisteredDate >= '${year}-01-01'`);
+      whereClauses.push(`CrimeRegisteredDate <= '${year}-12-31'`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const baseQuery = `SELECT CrimeRegisteredDate, CrimeMajorHeadID, CrimeMinorHeadID, PoliceStationID, latitude, longitude FROM CaseMaster ${whereString}`;
+
+    // Execute paginated fetch
+    const cases = await this.executePaginatedZCQL(baseQuery);
+
+    // Fetch metadata for name mapping
+    const districts = await this.executeZCQL('SELECT ROWID, DistrictName FROM District');
+    const stations = await this.executeZCQL('SELECT ROWID, UnitName, DistrictID FROM Unit');
+    const crimeHeads = await this.executeZCQL('SELECT ROWID, CrimeGroupName FROM CrimeHead');
+    const crimeSubHeads = await this.executeZCQL('SELECT ROWID, CrimeHeadName FROM CrimeSubHead');
+
+    // Create lookup maps
+    const districtMap = {};
+    districts.forEach(d => { districtMap[d.ROWID] = d.DistrictName; });
+
+    const unitMap = {};
+    stations.forEach(s => { unitMap[s.ROWID] = { UnitName: s.UnitName, DistrictID: s.DistrictID }; });
+
+    const crimeHeadMap = {};
+    crimeHeads.forEach(ch => { crimeHeadMap[ch.ROWID] = ch.CrimeGroupName; });
+
+    const crimeSubHeadMap = {};
+    crimeSubHeads.forEach(csh => { crimeSubHeadMap[csh.ROWID] = csh.CrimeHeadName; });
+
+    // Filter in-memory by Month & Season
+    let filteredCases = cases;
+    if (month) {
+      const monthStr = month.toString().padStart(2, '0');
+      filteredCases = filteredCases.filter(c => {
+        if (!c.CrimeRegisteredDate) return false;
+        const parts = c.CrimeRegisteredDate.split('-');
+        return parts[1] === monthStr;
+      });
+    }
+
+    if (season) {
+      filteredCases = filteredCases.filter(c => {
+        if (!c.CrimeRegisteredDate) return false;
+        const parts = c.CrimeRegisteredDate.split('-');
+        const monthNum = parseInt(parts[1], 10);
+        const caseSeason = seasonConfig.getSeason(monthNum);
+        return caseSeason.toLowerCase() === season.toLowerCase();
+      });
+    }
+
+    const totalRecords = filteredCases.length;
+
+    if (totalRecords === 0) {
+      return {
+        totalRecords: 0,
+        eventCalendarConfigured: false,
+        summary: {
+          highestCrimeSeason: 'N/A',
+          lowestCrimeSeason: 'N/A',
+          highestCrimeMonth: 'N/A',
+          highestCrimeWeekday: 'N/A',
+          highestCrimeWeekendCount: 0,
+          mostCommonSeasonalCrimeType: 'N/A'
+        },
+        distributions: {
+          monthly: [],
+          quarterly: [],
+          seasonal: [],
+          weekdayWeekend: [],
+          dayOfWeek: [],
+          yearWiseSeasonal: [],
+          crimeTypeSeason: [],
+          districtSeason: [],
+          stationSeason: []
+        },
+        heatmaps: {
+          monthlyHeatmap: [],
+          calendarHeatmap: []
+        },
+        insights: []
+      };
+    }
+
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    // Initialize aggregators
+    const monthlyMap = Array(12).fill(0);
+    const quarterMap = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+    const seasonMap = {};
+    seasonConfig.getAvailableSeasons().forEach(s => { seasonMap[s] = 0; });
+
+    let weekdayCount = 0;
+    let weekendCount = 0;
+    const dayOfWeekMap = Array(7).fill(0);
+    const yearWiseSeasonalMap = {};
+    const crimeCategorySeasonMap = {};
+    const districtSeasonMap = {};
+    const stationSeasonMap = {};
+    const monthlyHeatmapMap = {};
+    const calendarHeatmapMap = {};
+
+    filteredCases.forEach(c => {
+      if (!c.CrimeRegisteredDate) return;
+      
+      const dateParts = c.CrimeRegisteredDate.split('-');
+      const yearStr = dateParts[0];
+      const monthNum = parseInt(dateParts[1], 10);
+      const monthIndex = monthNum - 1;
+      
+      // Construct date as local to prevent timezone shifting
+      const localDate = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+      const dayIndex = localDate.getDay();
+
+      const monthName = MONTH_NAMES[monthIndex];
+      const dayName = DAY_NAMES[dayIndex];
+      const seasonName = seasonConfig.getSeason(monthNum);
+      const isWeekend = (dayIndex === 0 || dayIndex === 6);
+
+      const stationInfo = unitMap[c.PoliceStationID] || { UnitName: 'Unknown Station', DistrictID: null };
+      const districtName = districtMap[stationInfo.DistrictID] || 'Unknown District';
+      const stationName = stationInfo.UnitName;
+      const categoryName = crimeHeadMap[c.CrimeMajorHeadID] || 'Unknown Category';
+
+      monthlyMap[monthIndex]++;
+      
+      const quarter = `Q${Math.floor(monthIndex / 3) + 1}`;
+      quarterMap[quarter]++;
+
+      if (seasonName in seasonMap) {
+        seasonMap[seasonName]++;
+      } else {
+        seasonMap[seasonName] = 1;
+      }
+
+      if (isWeekend) {
+        weekendCount++;
+      } else {
+        weekdayCount++;
+      }
+
+      dayOfWeekMap[dayIndex]++;
+
+      if (!yearWiseSeasonalMap[yearStr]) {
+        yearWiseSeasonalMap[yearStr] = {};
+        seasonConfig.getAvailableSeasons().forEach(s => { yearWiseSeasonalMap[yearStr][s] = 0; });
+      }
+      yearWiseSeasonalMap[yearStr][seasonName] = (yearWiseSeasonalMap[yearStr][seasonName] || 0) + 1;
+
+      if (!crimeCategorySeasonMap[categoryName]) {
+        crimeCategorySeasonMap[categoryName] = {};
+        seasonConfig.getAvailableSeasons().forEach(s => { crimeCategorySeasonMap[categoryName][s] = 0; });
+      }
+      crimeCategorySeasonMap[categoryName][seasonName] = (crimeCategorySeasonMap[categoryName][seasonName] || 0) + 1;
+
+      if (!districtSeasonMap[districtName]) {
+        districtSeasonMap[districtName] = {};
+        seasonConfig.getAvailableSeasons().forEach(s => { districtSeasonMap[districtName][s] = 0; });
+      }
+      districtSeasonMap[districtName][seasonName] = (districtSeasonMap[districtName][seasonName] || 0) + 1;
+
+      if (!stationSeasonMap[stationName]) {
+        stationSeasonMap[stationName] = {};
+        seasonConfig.getAvailableSeasons().forEach(s => { stationSeasonMap[stationName][s] = 0; });
+      }
+      stationSeasonMap[stationName][seasonName] = (stationSeasonMap[stationName][seasonName] || 0) + 1;
+
+      if (!monthlyHeatmapMap[monthNum]) {
+        monthlyHeatmapMap[monthNum] = {};
+      }
+      monthlyHeatmapMap[monthNum][categoryName] = (monthlyHeatmapMap[monthNum][categoryName] || 0) + 1;
+
+      if (!calendarHeatmapMap[monthNum]) {
+        calendarHeatmapMap[monthNum] = {};
+      }
+      calendarHeatmapMap[monthNum][dayName] = (calendarHeatmapMap[monthNum][dayName] || 0) + 1;
+    });
+
+    // Formatting distributions
+    const monthlyList = MONTH_NAMES.map((name, i) => ({ month: name, count: monthlyMap[i] }));
+    const quarterlyList = Object.entries(quarterMap).map(([quarter, count]) => ({ quarter, count }));
+    const seasonalList = Object.entries(seasonMap).map(([season, count]) => ({ season, count }));
+    const weekdayWeekendList = [
+      { type: 'Weekday', count: weekdayCount },
+      { type: 'Weekend', count: weekendCount }
+    ];
+    const dayOfWeekList = DAY_NAMES.map((name, i) => ({ day: name, count: dayOfWeekMap[i] }));
+
+    const yearWiseSeasonalList = Object.entries(yearWiseSeasonalMap).map(([year, seasons]) => ({
+      year,
+      ...seasons
+    })).sort((a, b) => a.year.localeCompare(b.year));
+
+    const crimeTypeSeasonList = Object.entries(crimeCategorySeasonMap).map(([crimeCategory, seasons]) => ({
+      crimeCategory,
+      ...seasons
+    }));
+
+    const districtSeasonList = Object.entries(districtSeasonMap).map(([district, seasons]) => ({
+      district,
+      ...seasons
+    }));
+
+    const stationSeasonList = Object.entries(stationSeasonMap).map(([station, seasons]) => ({
+      station,
+      ...seasons
+    }));
+
+    // Flat heatmaps formatting
+    const categoriesList = [...new Set(Object.values(crimeHeadMap))];
+    const monthlyHeatmapList = [];
+    for (let m = 1; m <= 12; m++) {
+      const monthName = MONTH_NAMES[m - 1];
+      categoriesList.forEach(cat => {
+        const count = (monthlyHeatmapMap[m] && monthlyHeatmapMap[m][cat]) || 0;
+        monthlyHeatmapList.push({ month: monthName, category: cat, count });
+      });
+    }
+
+    const calendarHeatmapList = [];
+    for (let m = 1; m <= 12; m++) {
+      const monthName = MONTH_NAMES[m - 1];
+      DAY_NAMES.forEach(day => {
+        const count = (calendarHeatmapMap[m] && calendarHeatmapMap[m][day]) || 0;
+        calendarHeatmapList.push({ month: monthName, day, count });
+      });
+    }
+
+    // Calculating summary cards metrics
+    let highestCrimeSeason = 'N/A';
+    let highestSeasonCount = -1;
+    let lowestCrimeSeason = 'N/A';
+    let lowestSeasonCount = Infinity;
+    Object.entries(seasonMap).forEach(([s, count]) => {
+      if (count > highestSeasonCount) {
+        highestSeasonCount = count;
+        highestCrimeSeason = s;
+      }
+      if (count < lowestSeasonCount) {
+        lowestSeasonCount = count;
+        lowestCrimeSeason = s;
+      }
+    });
+
+    let highestCrimeMonth = 'N/A';
+    let highestMonthCount = -1;
+    monthlyList.forEach(m => {
+      if (m.count > highestMonthCount) {
+        highestMonthCount = m.count;
+        highestCrimeMonth = m.month;
+      }
+    });
+
+    let highestCrimeWeekday = 'N/A';
+    let highestWeekdayCount = -1;
+    const weekdayIndices = [1, 2, 3, 4, 5];
+    weekdayIndices.forEach(idx => {
+      const count = dayOfWeekMap[idx];
+      if (count > highestWeekdayCount) {
+        highestWeekdayCount = count;
+        highestCrimeWeekday = DAY_NAMES[idx];
+      }
+    });
+
+    let mostCommonSeasonalCrimeType = 'N/A';
+    let peakSeasonalCrimeCount = -1;
+    if (highestCrimeSeason !== 'N/A') {
+      Object.entries(crimeCategorySeasonMap).forEach(([cat, seasons]) => {
+        const count = seasons[highestCrimeSeason] || 0;
+        if (count > peakSeasonalCrimeCount) {
+          peakSeasonalCrimeCount = count;
+          mostCommonSeasonalCrimeType = cat;
+        }
+      });
+    }
+
+    // Dynamic insights sentence builder
+    const insights = [];
+    const peakSeasonPct = Math.round((highestSeasonCount / totalRecords) * 100);
+    insights.push(`Crime activity peaks during the ${highestCrimeSeason} season, accounting for ${peakSeasonPct}% of all registered cases.`);
+
+    const weekendPct = Math.round((weekendCount / totalRecords) * 100);
+    if (weekendPct > 35) {
+      insights.push(`A significant proportion of crimes (${weekendPct}%) are registered on weekends, indicating heightened activity on Saturdays and Sundays.`);
+    } else {
+      insights.push(`Crimes show a stable distribution with ${weekendPct}% registered on weekends and ${100 - weekendPct}% on weekdays.`);
+    }
+
+    Object.entries(crimeCategorySeasonMap).forEach(([cat, seasons]) => {
+      const catTotal = Object.values(seasons).reduce((a, b) => a + b, 0);
+      if (catTotal >= 5) {
+        for (const [season, count] of Object.entries(seasons)) {
+          const pct = Math.round((count / catTotal) * 100);
+          if (pct >= 40) {
+            insights.push(`${cat} offences show a strong seasonal concentration, with ${pct}% of cases occurring during the ${season} season.`);
+          }
+        }
+      }
+    });
+
+    return {
+      totalRecords,
+      eventCalendarConfigured: false,
+      summary: {
+        highestCrimeSeason,
+        lowestCrimeSeason,
+        highestCrimeMonth,
+        highestCrimeWeekday,
+        highestCrimeWeekendCount: weekendCount,
+        mostCommonSeasonalCrimeType
+      },
+      distributions: {
+        monthly: monthlyList,
+        quarterly: quarterlyList,
+        seasonal: seasonalList,
+        weekdayWeekend: weekdayWeekendList,
+        dayOfWeek: dayOfWeekList,
+        yearWiseSeasonal: yearWiseSeasonalList,
+        crimeTypeSeason: crimeTypeSeasonList,
+        districtSeason: districtSeasonList,
+        stationSeason: stationSeasonList
+      },
+      heatmaps: {
+        monthlyHeatmap: monthlyHeatmapList,
+        calendarHeatmap: calendarHeatmapList
+      },
+      insights
+    };
   }
 }
 

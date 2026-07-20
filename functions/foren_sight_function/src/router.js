@@ -12,7 +12,7 @@ const courtHandler = require('./routes/court.route');
 const chatHandler = require('./routes/chat.route');
 const conversationRouteHandler = require('./routes/conversation.route');
 const { relationshipGraphHandler, searchHandler } = require('./routes/intelligence.route');
-const { getTrendsHandler, getHotspotsHandler, getFiltersHandler, getClustersHandler } = require('./routes/analytics.route');
+const { getTrendsHandler, getHotspotsHandler, getFiltersHandler, getClustersHandler, getSeasonalHandler } = require('./routes/analytics.route');
 
 const routes = {
   'GET /health': healthHandler,
@@ -45,7 +45,8 @@ const routes = {
   'GET /intelligence/analytics/trends': getTrendsHandler,
   'GET /intelligence/analytics/hotspots': getHotspotsHandler,
   'GET /intelligence/analytics/filters': getFiltersHandler,
-  'GET /intelligence/analytics/clusters': getClustersHandler
+  'GET /intelligence/analytics/clusters': getClustersHandler,
+  'GET /intelligence/analytics/seasonal': getSeasonalHandler
 };
 
 async function dispatch(req, res) {

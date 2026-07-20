@@ -105,9 +105,39 @@ const getClustersHandler = async (req, res) => {
   }
 };
 
+const getSeasonalHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, crimeCategory, district, policeStation, year, month, season } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const seasonalData = await analyticsService.getSeasonalData({
+      startDate,
+      endDate,
+      crimeType,
+      crimeCategory,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined,
+      season
+    });
+
+    return sendJSON(res, 200, seasonalData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics Seasonal API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
 module.exports = {
   getTrendsHandler,
   getHotspotsHandler,
   getFiltersHandler,
-  getClustersHandler
+  getClustersHandler,
+  getSeasonalHandler
 };
