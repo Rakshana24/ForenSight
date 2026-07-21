@@ -1327,6 +1327,436 @@ class AnalyticsService {
       insights
     };
   }
+
+  /**
+   * Generates Demographic Analysis
+   * Properly sources attributes from respective tables (Accused, Victim, ComplainantDetails)
+   */
+  async getDemographicData(filters) {
+    const { startDate, endDate, crimeType, district, policeStation, year, month } = filters;
+    const whereClauses = [];
+
+    // Filter by Date Range
+    if (startDate) {
+      whereClauses.push(`CrimeRegisteredDate >= '${startDate}'`);
+    }
+    if (endDate) {
+      whereClauses.push(`CrimeRegisteredDate <= '${endDate}'`);
+    }
+
+    // Filter by Crime Type
+    if (crimeType) {
+      whereClauses.push(`CrimeMajorHeadID = '${crimeType}'`);
+    }
+
+    // Filter by Police Station
+    if (policeStation) {
+      whereClauses.push(`PoliceStationID = '${policeStation}'`);
+    }
+
+    // Filter by District
+    if (district && !policeStation) {
+      const stations = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE DistrictID = '${district}'`);
+      if (stations.length > 0) {
+        const stationRowIds = stations.map(s => `'${s.ROWID}'`).join(',');
+        whereClauses.push(`PoliceStationID IN (${stationRowIds})`);
+      } else {
+        whereClauses.push("PoliceStationID = '0'");
+      }
+    }
+
+    // Filter by Year
+    if (year) {
+      whereClauses.push(`CrimeRegisteredDate >= '${year}-01-01'`);
+      whereClauses.push(`CrimeRegisteredDate <= '${year}-12-31'`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const baseQuery = `SELECT ROWID, CrimeRegisteredDate, PoliceStationID FROM CaseMaster ${whereString}`;
+
+    // Execute paginated fetch
+    const cases = await this.executePaginatedZCQL(baseQuery);
+
+    // Fetch metadata for name mapping
+    const districts = await this.executeZCQL('SELECT ROWID, DistrictName FROM District');
+    const stations = await this.executeZCQL('SELECT ROWID, UnitName, DistrictID FROM Unit');
+    const religions = await this.executeZCQL('SELECT ROWID, ReligionName FROM ReligionMaster');
+    const castes = await this.executeZCQL('SELECT ROWID, caste_master_name FROM CasteMaster');
+    const occupations = await this.executeZCQL('SELECT ROWID, OccupationName FROM OccupationMaster');
+
+    // Create lookup maps
+    const districtMap = {};
+    districts.forEach(d => { districtMap[d.ROWID] = d.DistrictName; });
+
+    const unitMap = {};
+    stations.forEach(s => { unitMap[s.ROWID] = { UnitName: s.UnitName, DistrictID: s.DistrictID }; });
+
+    const relMap = {};
+    religions.forEach(r => { relMap[r.ROWID] = r.ReligionName; });
+
+    const casteMap = {};
+    castes.forEach(c => { casteMap[c.ROWID] = c.caste_master_name; });
+
+    const occMap = {};
+    occupations.forEach(o => { occMap[o.ROWID] = o.OccupationName; });
+    
+    // Filter in-memory by Month
+    let filteredCases = cases;
+    if (month) {
+      const monthStr = month.toString().padStart(2, '0');
+      filteredCases = cases.filter(c => {
+        if (!c.CrimeRegisteredDate) return false;
+        const parts = c.CrimeRegisteredDate.split('-');
+        return parts[1] === monthStr;
+      });
+    }
+
+    const validCaseIds = new Set(filteredCases.map(c => c.ROWID));
+    
+    // Fetch all related persons
+    const accusedRaw = await this.executePaginatedZCQL('SELECT CaseMasterID, AgeYear, GenderID FROM Accused');
+    const victimRaw = await this.executePaginatedZCQL('SELECT CaseMasterID, AgeYear, GenderID FROM Victim');
+    const complainantRaw = await this.executePaginatedZCQL('SELECT CaseMasterID, AgeYear, GenderID, CasteID, ReligionID, OccupationID FROM ComplainantDetails');
+
+    // Filter persons based on valid case IDs
+    const accused = accusedRaw.filter(a => validCaseIds.has(a.CaseMasterID));
+    const victim = victimRaw.filter(v => validCaseIds.has(v.CaseMasterID));
+    const complainant = complainantRaw.filter(c => validCaseIds.has(c.CaseMasterID));
+
+    // Distribution Helpers
+    const formatDistribution = (countsMap) => {
+      return Object.entries(countsMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    const getAgeGroup = (age) => {
+      const a = parseInt(age, 10);
+      if (isNaN(a)) return 'Unknown';
+      if (a < 18) return '< 18';
+      if (a >= 18 && a <= 30) return '18 - 30';
+      if (a >= 31 && a <= 50) return '31 - 50';
+      return '50+';
+    };
+
+    const getGenderStr = (genderId) => {
+      if (genderId == '1') return 'Male';
+      if (genderId == '2') return 'Female';
+      if (genderId == '3') return 'Other';
+      return 'Unknown';
+    };
+
+    const countAgeAndGender = (personsList) => {
+      const ageGroups = { '< 18': 0, '18 - 30': 0, '31 - 50': 0, '50+': 0, 'Unknown': 0 };
+      const genderCounts = { 'Male': 0, 'Female': 0, 'Other': 0, 'Unknown': 0 };
+      
+      personsList.forEach(p => {
+        if (p.AgeYear) {
+          const ageGrp = getAgeGroup(p.AgeYear);
+          ageGroups[ageGrp] = (ageGroups[ageGrp] || 0) + 1;
+        } else {
+          ageGroups['Unknown'] += 1;
+        }
+        
+        if (p.GenderID) {
+          const gender = getGenderStr(p.GenderID);
+          genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+        } else {
+          genderCounts['Unknown'] += 1;
+        }
+      });
+
+      // Filter out empty 'Unknown' categories if zero for cleaner charts
+      if (ageGroups['Unknown'] === 0) delete ageGroups['Unknown'];
+      if (genderCounts['Unknown'] === 0) delete genderCounts['Unknown'];
+
+      return {
+        age: formatDistribution(ageGroups),
+        gender: formatDistribution(genderCounts)
+      };
+    };
+
+    const accusedDemographics = countAgeAndGender(accused);
+    const victimDemographics = countAgeAndGender(victim);
+    const complainantBaseDemographics = countAgeAndGender(complainant);
+
+    const relCounts = {};
+    const casteCounts = {};
+    const occCounts = {};
+
+    complainant.forEach(c => {
+      const rName = c.ReligionID ? (relMap[c.ReligionID] || 'Unknown') : 'Unknown';
+      const cName = c.CasteID ? (casteMap[c.CasteID] || 'Unknown') : 'Unknown';
+      const oName = c.OccupationID ? (occMap[c.OccupationID] || 'Unknown') : 'Unknown';
+
+      relCounts[rName] = (relCounts[rName] || 0) + 1;
+      casteCounts[cName] = (casteCounts[cName] || 0) + 1;
+      occCounts[oName] = (occCounts[oName] || 0) + 1;
+    });
+
+    const districtCounts = {};
+    const stationCounts = {};
+
+    filteredCases.forEach(c => {
+      const stationInfo = unitMap[c.PoliceStationID] || { UnitName: 'Unknown Station', DistrictID: null };
+      const districtName = districtMap[stationInfo.DistrictID] || 'Unknown District';
+      const stationName = stationInfo.UnitName;
+
+      districtCounts[districtName] = (districtCounts[districtName] || 0) + 1;
+      stationCounts[stationName] = (stationCounts[stationName] || 0) + 1;
+    });
+
+    return {
+      accused: accusedDemographics,
+      victim: victimDemographics,
+      complainant: {
+        ...complainantBaseDemographics,
+        occupation: formatDistribution(occCounts),
+        religion: formatDistribution(relCounts),
+        caste: formatDistribution(casteCounts)
+      },
+      geography: {
+        district: formatDistribution(districtCounts),
+        station: formatDistribution(stationCounts)
+      },
+      totalRecords: filteredCases.length
+    };
+  }
+
+  async getSocioEconomicData(filters) {
+    const { startDate, endDate, crimeType, district, policeStation, year, month } = filters;
+    
+    const whereClauses = [];
+    if (startDate) whereClauses.push(`CrimeRegisteredDate >= '${startDate}'`);
+    if (endDate) whereClauses.push(`CrimeRegisteredDate <= '${endDate}'`);
+    if (crimeType) whereClauses.push(`CrimeMajorHeadID = '${crimeType}'`);
+    if (policeStation) whereClauses.push(`PoliceStationID = '${policeStation}'`);
+    
+    if (district && !policeStation) {
+      const stations = await this.executeZCQL(`SELECT ROWID FROM Unit WHERE DistrictID = '${district}'`);
+      if (stations.length > 0) {
+        const stationRowIds = stations.map(s => `'${s.ROWID}'`).join(',');
+        whereClauses.push(`PoliceStationID IN (${stationRowIds})`);
+      } else {
+        whereClauses.push("PoliceStationID = '0'");
+      }
+    }
+    
+    if (year) {
+      whereClauses.push(`CrimeRegisteredDate >= '${year}-01-01'`);
+      whereClauses.push(`CrimeRegisteredDate <= '${year}-12-31'`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const baseQuery = `SELECT ROWID, CrimeRegisteredDate, PoliceStationID, CrimeMajorHeadID FROM CaseMaster ${whereString}`;
+    const cases = await this.executePaginatedZCQL(baseQuery);
+    
+    let filteredCases = cases;
+    if (month) {
+      const monthStr = month.toString().padStart(2, '0');
+      filteredCases = cases.filter(c => {
+        if (!c.CrimeRegisteredDate) return false;
+        const parts = c.CrimeRegisteredDate.split('-');
+        return parts[1] === monthStr;
+      });
+    }
+
+    const validCaseIds = new Set(filteredCases.map(c => c.ROWID));
+    
+    const districts = await this.executeZCQL('SELECT ROWID, DistrictName FROM District');
+    const stations = await this.executeZCQL('SELECT ROWID, UnitName, DistrictID FROM Unit');
+    const occupations = await this.executeZCQL('SELECT ROWID, OccupationName FROM OccupationMaster');
+    const crimeHeads = await this.executeZCQL('SELECT ROWID, CrimeGroupName FROM CrimeHead');
+    
+    const complainantRaw = await this.executePaginatedZCQL('SELECT CaseMasterID, OccupationID FROM ComplainantDetails');
+    const complainant = complainantRaw.filter(c => validCaseIds.has(c.CaseMasterID));
+    
+    const districtMap = {}; districts.forEach(d => { districtMap[d.ROWID] = d.DistrictName; });
+    const unitMap = {}; stations.forEach(s => { unitMap[s.ROWID] = { UnitName: s.UnitName, DistrictID: s.DistrictID }; });
+    const occMap = {}; occupations.forEach(o => { occMap[o.ROWID] = o.OccupationName; });
+    const crimeMap = {}; crimeHeads.forEach(ch => { crimeMap[ch.ROWID] = ch.CrimeGroupName; });
+    
+    const occCounts = {};
+    const districtCounts = {};
+    const stationCounts = {};
+    const crimeCategoryCounts = {};
+    const crimeByOccMap = {};
+    
+    const caseDetails = {};
+    filteredCases.forEach(c => {
+      caseDetails[c.ROWID] = c;
+      const stationInfo = unitMap[c.PoliceStationID] || { UnitName: 'Unknown Unit', DistrictID: null };
+      const districtName = districtMap[stationInfo.DistrictID] || 'Unknown District';
+      const crimeName = crimeMap[c.CrimeMajorHeadID] || 'Uncategorized Crime';
+      
+      districtCounts[districtName] = (districtCounts[districtName] || 0) + 1;
+      stationCounts[stationInfo.UnitName] = (stationCounts[stationInfo.UnitName] || 0) + 1;
+      crimeCategoryCounts[crimeName] = (crimeCategoryCounts[crimeName] || 0) + 1;
+    });
+    
+    complainant.forEach(comp => {
+      const oName = comp.OccupationID ? (occMap[comp.OccupationID] || 'Unknown') : 'Unknown';
+      occCounts[oName] = (occCounts[oName] || 0) + 1;
+      
+      const relatedCase = caseDetails[comp.CaseMasterID];
+      if (relatedCase) {
+        const crimeName = crimeMap[relatedCase.CrimeMajorHeadID] || 'Uncategorized Crime';
+        if (!crimeByOccMap[oName]) crimeByOccMap[oName] = {};
+        crimeByOccMap[oName][crimeName] = (crimeByOccMap[oName][crimeName] || 0) + 1;
+      }
+    });
+
+    const formatDistribution = (countsMap) => {
+      return Object.entries(countsMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    const occupationAnalysis = formatDistribution(occCounts);
+    const districtAnalysis = formatDistribution(districtCounts);
+    const unitAnalysis = formatDistribution(stationCounts);
+    const crimeCategoryAnalysis = formatDistribution(crimeCategoryCounts);
+
+    const insights = [];
+    if (occupationAnalysis.length > 0) {
+      const topOcc = occupationAnalysis[0];
+      if (topOcc.name !== 'Unknown') {
+        insights.push(`The most affected socio-economic segment is individuals working in '${topOcc.name}' with ${topOcc.count} recorded cases.`);
+      } else if (occupationAnalysis.length > 1) {
+        insights.push(`Excluding unknown profiles, individuals working in '${occupationAnalysis[1].name}' represent the largest affected occupation group.`);
+      }
+    }
+
+    if (districtAnalysis.length > 0) {
+      const topD = districtAnalysis[0];
+      if (topD.name !== 'Unknown District') {
+        insights.push(`District '${topD.name}' shows the highest crime concentration (${topD.count} cases), representing significant regional risk.`);
+      }
+    }
+
+    if (unitAnalysis.length > 0) {
+      const topU = unitAnalysis[0];
+      if (topU.name !== 'Unknown Unit') {
+        insights.push(`Police Station '${topU.name}' handles the highest volume of cases in the filtered jurisdiction.`);
+      }
+    }
+
+    if (crimeCategoryAnalysis.length > 0) {
+      const topC = crimeCategoryAnalysis[0];
+      insights.push(`'${topC.name}' is the predominant crime category impacting these communities.`);
+    }
+
+    if (occupationAnalysis.length > 0) {
+      const topOcc = occupationAnalysis[0].name === 'Unknown' && occupationAnalysis.length > 1 ? occupationAnalysis[1].name : occupationAnalysis[0].name;
+      if (topOcc && topOcc !== 'Unknown' && crimeByOccMap[topOcc]) {
+        const occCrimes = formatDistribution(crimeByOccMap[topOcc]);
+        if (occCrimes.length > 0) {
+          insights.push(`Among individuals working in '${topOcc}', the most frequently reported crime is '${occCrimes[0].name}'.`);
+        }
+      }
+    }
+
+    if (insights.length === 0) {
+      insights.push("No significant socio-economic insights could be derived from the selected data filters.");
+    }
+
+    return {
+      occupationAnalysis,
+      districtAnalysis,
+      unitAnalysis,
+      crimeCategoryAnalysis,
+      insights,
+      totalRecords: filteredCases.length
+    };
+  }
+
+  async getSocialRiskData(filters) {
+    const socio = await this.getSocioEconomicData(filters);
+    
+    const highRiskDistricts = [];
+    const highWorkloadUnits = [];
+    const occupationRiskIndicators = [];
+    const crimeCategoryHotspots = [];
+    const overallRiskSummary = [];
+    let riskPoints = 0;
+
+    // Analyze Districts
+    if (socio.districtAnalysis.length > 0) {
+      const topDistrict = socio.districtAnalysis[0];
+      if (topDistrict.name !== 'Unknown District') {
+        const pct = socio.totalRecords > 0 ? (topDistrict.count / socio.totalRecords) * 100 : 0;
+        highRiskDistricts.push({ name: topDistrict.name, count: topDistrict.count, percentage: pct.toFixed(1) });
+        if (pct > 30) {
+          riskPoints += 2;
+          overallRiskSummary.push(`CRITICAL: District '${topDistrict.name}' accounts for ${pct.toFixed(1)}% of all crimes.`);
+        } else if (pct > 15) {
+          riskPoints += 1;
+          overallRiskSummary.push(`ELEVATED: District '${topDistrict.name}' accounts for ${pct.toFixed(1)}% of crimes.`);
+        }
+      }
+    }
+
+    // Analyze Units
+    if (socio.unitAnalysis.length > 0) {
+      const topUnit = socio.unitAnalysis[0];
+      if (topUnit.name !== 'Unknown Unit') {
+        const pct = socio.totalRecords > 0 ? (topUnit.count / socio.totalRecords) * 100 : 0;
+        highWorkloadUnits.push({ name: topUnit.name, count: topUnit.count, percentage: pct.toFixed(1) });
+        if (pct > 20) {
+          riskPoints += 2;
+          overallRiskSummary.push(`CRITICAL: Police Unit '${topUnit.name}' is severely burdened with ${pct.toFixed(1)}% of the workload.`);
+        } else if (pct > 10) {
+          riskPoints += 1;
+          overallRiskSummary.push(`ELEVATED: Police Unit '${topUnit.name}' handles ${pct.toFixed(1)}% of all cases.`);
+        }
+      }
+    }
+
+    // Analyze Occupations
+    if (socio.occupationAnalysis.length > 0) {
+      const topOcc = socio.occupationAnalysis.find(o => o.name !== 'Unknown');
+      if (topOcc) {
+        const pct = socio.totalRecords > 0 ? (topOcc.count / socio.totalRecords) * 100 : 0;
+        occupationRiskIndicators.push({ name: topOcc.name, count: topOcc.count, percentage: pct.toFixed(1) });
+        if (pct > 25) {
+          riskPoints += 1;
+          overallRiskSummary.push(`VULNERABILITY: Individuals working in '${topOcc.name}' represent ${pct.toFixed(1)}% of complainant demographics.`);
+        }
+      }
+    }
+
+    // Analyze Crime Categories
+    if (socio.crimeCategoryAnalysis.length > 0) {
+      const topCrime = socio.crimeCategoryAnalysis[0];
+      const pct = socio.totalRecords > 0 ? (topCrime.count / socio.totalRecords) * 100 : 0;
+      crimeCategoryHotspots.push({ name: topCrime.name, count: topCrime.count, percentage: pct.toFixed(1) });
+      if (pct > 35) {
+        riskPoints += 2;
+        overallRiskSummary.push(`CRITICAL: '${topCrime.name}' is hyper-concentrated, comprising ${pct.toFixed(1)}% of total volume.`);
+      } else if (pct > 20) {
+        riskPoints += 1;
+        overallRiskSummary.push(`WARNING: '${topCrime.name}' dominates the current regional crime profile.`);
+      }
+    }
+
+    let riskLevel = "Low";
+    if (riskPoints >= 5) riskLevel = "High";
+    else if (riskPoints >= 2) riskLevel = "Moderate";
+
+    if (overallRiskSummary.length === 0) {
+      overallRiskSummary.push("Crime distribution appears balanced without any extreme concentrations.");
+    }
+
+    return {
+      highRiskDistricts,
+      highWorkloadUnits,
+      occupationRiskIndicators,
+      crimeCategoryHotspots,
+      overallRiskSummary,
+      riskLevel,
+      totalRecords: socio.totalRecords
+    };
+  }
 }
 
 module.exports = AnalyticsService;

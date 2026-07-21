@@ -134,10 +134,94 @@ const getSeasonalHandler = async (req, res) => {
   }
 };
 
+const getDemographicsHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, district, policeStation, year, month } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const demographicData = await analyticsService.getDemographicData({
+      startDate,
+      endDate,
+      crimeType,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined
+    });
+
+    return sendJSON(res, 200, demographicData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics Demographics API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
+const getSocioEconomicsHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, district, policeStation, year, month } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const socioEconomicData = await analyticsService.getSocioEconomicData({
+      startDate,
+      endDate,
+      crimeType,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined
+    });
+
+    return sendJSON(res, 200, socioEconomicData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics SocioEconomic API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
+const getSocialRiskHandler = async (req, res) => {
+  try {
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+    
+    const parsedUrl = url.parse(req.url, true);
+    const { startDate, endDate, crimeType, district, policeStation, year, month } = parsedUrl.query;
+    
+    const analyticsService = new AnalyticsService(zcql);
+    const socialRiskData = await analyticsService.getSocialRiskData({
+      startDate,
+      endDate,
+      crimeType,
+      district,
+      policeStation,
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined
+    });
+
+    return sendJSON(res, 200, socialRiskData);
+  } catch (error) {
+    console.error('[DEBUG] Analytics Social Risk API Exception:', error.stack || error);
+    const statusCode = error.statusCode || 500;
+    return sendError(res, statusCode, error.message);
+  }
+};
+
 module.exports = {
   getTrendsHandler,
   getHotspotsHandler,
   getFiltersHandler,
   getClustersHandler,
-  getSeasonalHandler
+  getSeasonalHandler,
+  getDemographicsHandler,
+  getSocioEconomicsHandler,
+  getSocialRiskHandler
 };

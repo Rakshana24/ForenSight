@@ -26,22 +26,22 @@ import {
   TableHead,
   TableRow
 } from '@mui/material';
-import {
-  TrendingUp as TrendingUpIcon,
-  Timeline as TimelineIcon,
-  BarChart as BarChartIcon,
-  ShowChart as LineChartIcon,
-  Refresh as RefreshIcon,
-  FilterList as FilterIcon,
-  Layers as HotspotIcon,
-  BubbleChart as ClusterIcon,
-  AcUnit as SeasonalIcon,
-  ClearAll as ClearIcon,
-  LocationOn as PinIcon,
-  Map as MapIcon,
-  PieChart as PieChartIcon,
-  TableChart as TableIcon
-} from '@mui/icons-material';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import LineChartIcon from '@mui/icons-material/ShowChart';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import FilterIcon from '@mui/icons-material/FilterList';
+import HotspotIcon from '@mui/icons-material/Layers';
+import ClusterIcon from '@mui/icons-material/BubbleChart';
+import SeasonalIcon from '@mui/icons-material/AcUnit';
+import ClearIcon from '@mui/icons-material/ClearAll';
+import PinIcon from '@mui/icons-material/LocationOn';
+import MapIcon from '@mui/icons-material/Map';
+import PieChartIcon from '@mui/icons-material/PieChart';
+import TableIcon from '@mui/icons-material/TableChart';
+import SocioIcon from '@mui/icons-material/Public';
+import RiskIcon from '@mui/icons-material/WarningAmber';
 import {
   ResponsiveContainer,
   LineChart,
@@ -60,6 +60,9 @@ import {
   Cell
 } from 'recharts';
 import { intelligenceService } from '../../services/intelligenceService';
+import DemographicsTab from './DemographicsTab';
+import SocioEconomicTab from './SocioEconomicTab';
+import SocialRiskTab from './SocialRiskTab';
 
 interface FilterOptions {
   districts: Array<{ ROWID: string; DistrictID: string; DistrictName: string }>;
@@ -1267,6 +1270,9 @@ const AnalyticsPage: React.FC = () => {
           <Tab label="Hotspots" icon={<HotspotIcon fontSize="small" />} iconPosition="start" />
           <Tab label="Crime Clusters" icon={<ClusterIcon fontSize="small" />} iconPosition="start" />
           <Tab label="Seasonal Analysis" icon={<SeasonalIcon fontSize="small" />} iconPosition="start" />
+          <Tab label="Demographics" icon={<PieChartIcon fontSize="small" />} iconPosition="start" />
+          <Tab label="Socio-economic" icon={<SocioIcon fontSize="small" />} iconPosition="start" />
+          <Tab label="Social Risk" icon={<RiskIcon fontSize="small" />} iconPosition="start" />
         </Tabs>
       </Paper>
 
@@ -2740,6 +2746,15 @@ const AnalyticsPage: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Tab 4 Content: Demographics */}
+      {activeTab === 4 && <DemographicsTab filterOpts={filterOpts} />}
+
+      {/* Tab 5 Content: Socio-economic */}
+      {activeTab === 5 && <SocioEconomicTab filterOpts={filterOpts} />}
+
+      {/* Tab 6 Content: Social Risk */}
+      {activeTab === 6 && <SocialRiskTab filterOpts={{ startDate, endDate, district: selectedDistrict, policeStation: selectedStation, crimeType: selectedCrimeType }} />}
     </Box>
   );
 };

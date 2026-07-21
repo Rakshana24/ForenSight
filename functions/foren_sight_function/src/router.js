@@ -12,7 +12,7 @@ const courtHandler = require('./routes/court.route');
 const chatHandler = require('./routes/chat.route');
 const conversationRouteHandler = require('./routes/conversation.route');
 const { relationshipGraphHandler, searchHandler } = require('./routes/intelligence.route');
-const { getTrendsHandler, getHotspotsHandler, getFiltersHandler, getClustersHandler, getSeasonalHandler } = require('./routes/analytics.route');
+const { getTrendsHandler, getHotspotsHandler, getFiltersHandler, getClustersHandler, getSeasonalHandler, getDemographicsHandler, getSocioEconomicsHandler, getSocialRiskHandler } = require('./routes/analytics.route');
 
 const routes = {
   'GET /health': healthHandler,
@@ -46,7 +46,16 @@ const routes = {
   'GET /intelligence/analytics/hotspots': getHotspotsHandler,
   'GET /intelligence/analytics/filters': getFiltersHandler,
   'GET /intelligence/analytics/clusters': getClustersHandler,
-  'GET /intelligence/analytics/seasonal': getSeasonalHandler
+  'GET /intelligence/analytics/seasonal': getSeasonalHandler,
+  
+  // Feature 23 Demographic Crime Analysis
+  'GET /intelligence/analytics/demographics': getDemographicsHandler,
+
+  // Feature 24 Socio-economic Crime Analysis
+  'GET /intelligence/analytics/socio-economic': getSocioEconomicsHandler,
+
+  // Feature 25 Social Risk Analysis
+  'GET /intelligence/analytics/social-risk': getSocialRiskHandler
 };
 
 async function dispatch(req, res) {

@@ -73,5 +73,23 @@ export const intelligenceService = {
       params: filters
     });
     return response.data;
+  },
+  getDemographicData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/demographics', {
+      params: filters
+    });
+    return response.data;
+  },
+  getSocioEconomicData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/socio-economic', {
+      params: filters
+    });
+    return response.data;
+  },
+  getSocialRiskData: async (filters: any): Promise<any> => {
+    const response = await api.get('/intelligence/analytics/social-risk', {
+      params: filters
+    });
+    return response.data;
   }
 };
