@@ -153,11 +153,14 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                       {isCritical ? <ErrorIcon color="error" /> : isWarning ? <WarningIcon color="warning" /> : <CheckCircleIcon color="primary" />}
                     </ListItemIcon>
                     <ListItemText 
-                      primary={summary} 
-                      primaryTypographyProps={{ 
-                        fontWeight: isCritical ? 700 : 500,
-                        color: isCritical ? '#d32f2f' : THEME.textMain
-                      }} 
+                      primary={
+                        <Typography sx={{ 
+                          fontWeight: isCritical ? 700 : 500,
+                          color: isCritical ? '#d32f2f' : THEME.textMain
+                        }}>
+                          {summary}
+                        </Typography>
+                      } 
                     />
                   </ListItem>
                 );
@@ -173,7 +176,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
       <Grid container spacing={3}>
         
         {/* High Risk Districts */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -188,9 +191,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={d.name} 
+                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{d.name}</Typography>}
                           secondary={`${d.count} cases (${d.percentage}%)`}
-                          primaryTypographyProps={{ fontWeight: 600, color: THEME.textMain }}
                         />
                       </ListItem>
                       {idx < data.highRiskDistricts.length - 1 && <Divider />}
@@ -205,7 +207,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
         </Grid>
 
         {/* High Workload Units */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -220,9 +222,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={u.name} 
+                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{u.name}</Typography>}
                           secondary={`${u.count} cases (${u.percentage}%)`}
-                          primaryTypographyProps={{ fontWeight: 600, color: THEME.textMain }}
                         />
                       </ListItem>
                       {idx < data.highWorkloadUnits.length - 1 && <Divider />}
@@ -237,7 +238,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
         </Grid>
 
         {/* Occupation Vulnerabilities */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -268,7 +269,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
         </Grid>
 
         {/* Crime Category Hotspots */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -283,9 +284,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={c.name} 
+                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{c.name}</Typography>}
                           secondary={`${c.count} cases (${c.percentage}%)`}
-                          primaryTypographyProps={{ sx: { fontWeight: 600, color: THEME.textMain } }}
                         />
                       </ListItem>
                       {idx < data.crimeCategoryHotspots.length - 1 && <Divider />}
