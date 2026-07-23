@@ -907,7 +907,17 @@ class ChatService {
       const llm = this.getLLMService(req);
       const promptText = getCaseSummaryPrompt(caseRecord, victims, accused);
       console.log(`[ChatService] Generating case summary via QuickML...`);
-      const summaryText = await llm.generateText(promptText);
+      let summaryText = await llm.generateText(promptText);
+      if (summaryText.includes('CASE OVERVIEW')) {
+        const idx = summaryText.indexOf('CASE OVERVIEW');
+        const preStr = summaryText.substring(0, idx);
+        const dashIdx = preStr.lastIndexOf('---');
+        if (dashIdx !== -1) {
+          summaryText = summaryText.substring(dashIdx);
+        } else {
+          summaryText = summaryText.substring(idx);
+        }
+      }
       return summaryText;
     } catch (llmError) {
       console.warn('[ChatService] QuickML summary generation failed. Using local fallback...', llmError.message);
@@ -1107,7 +1117,26 @@ Investigation progress has reached stage: ${status}.
       const llm = this.getLLMService(req);
       const promptText = getCaseAssessmentPrompt(caseRecord, victims, accused, statusLabel);
       console.log(`[ChatService] Generating case assessment via QuickML...`);
-      const assessmentText = await llm.generateText(promptText);
+      let assessmentText = await llm.generateText(promptText);
+      const idx = assessmentText.indexOf('INVESTIGATION STATUS');
+      const idxClosed = assessmentText.indexOf('CASE STATUS');
+      if (statusLabel === 'Active' && idx !== -1) {
+        const preStr = assessmentText.substring(0, idx);
+        const dashIdx = preStr.lastIndexOf('---');
+        if (dashIdx !== -1) {
+          assessmentText = assessmentText.substring(dashIdx);
+        } else {
+          assessmentText = assessmentText.substring(idx);
+        }
+      } else if (statusLabel === 'Closed' && idxClosed !== -1) {
+        const preStr = assessmentText.substring(0, idxClosed);
+        const dashIdx = preStr.lastIndexOf('---');
+        if (dashIdx !== -1) {
+          assessmentText = assessmentText.substring(dashIdx);
+        } else {
+          assessmentText = assessmentText.substring(idxClosed);
+        }
+      }
       return assessmentText;
     } catch (llmError) {
       console.warn('[ChatService] QuickML assessment generation failed. Using local fallback...', llmError.message);
@@ -1516,7 +1545,10 @@ OVERALL AI ASSESSMENT
       const llm = this.getLLMService(req);
       const promptText = getCaseTimelinePrompt(caseRecord, victims, accused, arrestRecords, chargesheetRecords, statusLabel);
       console.log(`[ChatService] Generating case timeline via QuickML...`);
-      const timelineText = await llm.generateText(promptText);
+      let timelineText = await llm.generateText(promptText);
+      if (timelineText.includes('INVESTIGATION TIMELINE')) {
+        timelineText = timelineText.substring(timelineText.indexOf('INVESTIGATION TIMELINE'));
+      }
       return timelineText;
     } catch (llmError) {
       console.warn(`[ChatService] QuickML timeline generation failed. Falling back to deterministic timeline...`, llmError.message || llmError);
@@ -1823,7 +1855,17 @@ OVERALL AI ASSESSMENT
       const llm = this.getLLMService(req);
       const promptText = getSimilarCasesPrompt(caseRecord, victims, accused, candidates);
       console.log(`[ChatService] Generating similar case recommendations via QuickML...`);
-      const recommendationsText = await llm.generateText(promptText);
+      let recommendationsText = await llm.generateText(promptText);
+      const idx = recommendationsText.indexOf('Case 1 (FIR No:');
+      if (idx !== -1) {
+        const preText = recommendationsText.substring(0, idx);
+        const headerIdx = preText.lastIndexOf('SIMILAR CASES');
+        if (headerIdx !== -1) {
+          recommendationsText = recommendationsText.substring(headerIdx);
+        } else {
+          recommendationsText = 'SIMILAR CASES\n--------------------------------\n' + recommendationsText.substring(idx);
+        }
+      }
       return recommendationsText;
     } catch (llmError) {
       console.warn(`[ChatService] QuickML similar case recommendation failed. Falling back to local ranking...`, llmError.message || llmError);
@@ -2116,7 +2158,10 @@ OVERALL AI ASSESSMENT
       const llm = this.getLLMService(req);
       const promptText = getInvestigationLeadsPrompt(caseRecord, victims, accused, topSimilarCases);
       console.log(`[ChatService] Generating investigation leads via QuickML...`);
-      const recommendationsText = await llm.generateText(promptText);
+      let recommendationsText = await llm.generateText(promptText);
+      if (recommendationsText.includes('AI INVESTIGATION LEADS')) {
+        recommendationsText = recommendationsText.substring(recommendationsText.indexOf('AI INVESTIGATION LEADS'));
+      }
       return recommendationsText;
     } catch (llmError) {
       console.warn(`[ChatService] QuickML lead generation failed. Falling back to local ranking...`, llmError.message || llmError);
@@ -2399,52 +2444,46 @@ function getSimilarCasesPrompt(currentCase, victims, accused, candidates) {
     }))
   };
 
-  return `You are a Senior AI Engineer, Data Intelligence Architect, and Crime Solution Architect.
-Your task is to analyze the current crime case against the candidate historical cases provided in the JSON below.
-Select the top 3 most similar historical cases.
-For each of the top 3, calculate a similarity percentage score (e.g. 92%, 87%, 81%) based on overlap in crime type, location, MO (modus operandi), accused network, or victim profile.
-Provide specific bullet points explaining the reason for match, and the outcome of the case.
-Finally, write an OVERALL AI OBSERVATION describing patterns across these cases.
+  return `Select the top 3 most similar historical cases from the candidates list.
+You MUST format your output exactly like the following example. Do NOT write any introduction, thinking blocks, planning logs, or explanations. Start your response immediately with the header "SIMILAR CASES".
 
-Strict Prompt Rules:
-1. Recommend ONLY cases present in the provided candidates list. Do NOT invent, hallucinate, or fabricate cases.
-2. In the title header of each recommended case, write the case index and the actual FIR number/caseNumber from the data, exactly in this format: "Case [Index] (FIR No: [caseNumber])" (e.g. "Case 1 (FIR No: 202100001)").
-3. Follow the exact structure and formatting below. Do NOT add extra intro/outro text.
-
-Required Output Format:
+Example response format:
 SIMILAR CASES
 --------------------------------
-Case 1 (FIR No: [caseNumber])
+Case 1 (FIR No: 202500001)
 Similarity Score
-[Similarity Score, e.g. 92%]
+90%
 Reason for Match
-• [Reason 1]
-• [Reason 2]
+• Same crime type
+• Night patrol interception
 Outcome
-[Case Status Outcome, e.g. Charges Filed]
+Under Investigation
 --------------------------------
-Case 2 (FIR No: [caseNumber])
+Case 2 (FIR No: 202400002)
 Similarity Score
-[Similarity Score, e.g. 87%]
+85%
 Reason for Match
-• [Reason 1]
-• [Reason 2]
+• Similar MO
+• Close geographical district
 Outcome
-[Case Status Outcome, e.g. Convicted]
+Convicted
 --------------------------------
-Case 3 (FIR No: [caseNumber])
+Case 3 (FIR No: 202300003)
 Similarity Score
-[Similarity Score, e.g. 81%]
+80%
 Reason for Match
-• [Reason 1]
+• Overlap in suspect profile
 Outcome
-[Case Status Outcome, e.g. Under Trial]
+Under Trial
 --------------------------------
 OVERALL AI OBSERVATION
-[Professional explanation describing common patterns across the recommended cases.]
+All cases show similar nocturnal pattern of offences.
 
-Here is the JSON data to process:
-${JSON.stringify(data, null, 2)}`;
+Current Case Details:
+${JSON.stringify(data.current, null, 2)}
+
+Candidate Historical Cases:
+${JSON.stringify(data.candidates, null, 2)}`;
 }
 
 function getInvestigationLeadsPrompt(caseRecord, victims, accused, similarCases) {

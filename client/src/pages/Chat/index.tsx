@@ -21,6 +21,7 @@ const Chat: React.FC = () => {
     loading
   } = useChat();
 
+  const [recordedAudioBlob, setRecordedAudioBlob] = React.useState<Blob | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Auto scroll to bottom when new messages arrive
@@ -279,7 +280,11 @@ const Chat: React.FC = () => {
           <Divider />
 
           {/* 3. Input Message Field */}
-          <ChatInput onSend={sendChatMessage} disabled={loading} />
+          <ChatInput 
+            onSend={sendChatMessage} 
+            disabled={loading} 
+            onVoiceRecordingComplete={setRecordedAudioBlob}
+          />
         </>
       ) : (
         /* ================== NEW CHAT / WELCOME SCREEN ================== */

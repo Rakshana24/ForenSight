@@ -11,6 +11,7 @@ const unitHandler = require('./routes/unit.route');
 const courtHandler = require('./routes/court.route');
 const chatHandler = require('./routes/chat.route');
 const conversationRouteHandler = require('./routes/conversation.route');
+const voiceRouteHandler = require('./routes/voice.route');
 const { relationshipGraphHandler, searchHandler } = require('./routes/intelligence.route');
 const { getTrendsHandler, getHotspotsHandler, getFiltersHandler, getClustersHandler, getSeasonalHandler, getDemographicsHandler, getSocioEconomicsHandler, getSocialRiskHandler } = require('./routes/analytics.route');
 
@@ -26,6 +27,7 @@ const routes = {
   
   // Feature 10A Endpoints & Required Aliases
   'POST /chat': chatHandler,
+  'POST /voice/transcribe': voiceRouteHandler,
   'GET /fir': caseHandler,
   'GET /criminal': accusedHandler,
 
