@@ -41,7 +41,13 @@ class IntelligenceService {
     switch(searchType) {
       case 'Case ID':
         if (!isNaN(val)) {
-          baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CaseMasterID = ${val}`;
+          const numVal = Number(val);
+          const isBigId = isNaN(numVal) || numVal > 999999999 || numVal < -999999999;
+          if (isBigId) {
+            baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE ROWID = '${val}'`;
+          } else {
+            baseQuery = `SELECT ROWID, CaseMasterID, CrimeNo, CrimeRegisteredDate, BriefFacts FROM CaseMaster WHERE CaseMasterID = ${val} OR ROWID = '${val}'`;
+          }
           rows = await this.executeZCQL(baseQuery);
         }
         if (rows.length === 0) {

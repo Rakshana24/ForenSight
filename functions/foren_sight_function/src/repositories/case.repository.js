@@ -66,7 +66,13 @@ class CaseRepository {
     
     let filterClause = '';
     if (caseID) {
-      filterClause = `${COLUMNS[TABLES.CASE_MASTER].CASE_MASTER_ID} = ${caseID}`;
+      const numVal = Number(caseID);
+      const isBigId = isNaN(numVal) || numVal > 999999999 || numVal < -999999999;
+      if (isBigId) {
+        filterClause = `ROWID = '${caseID}'`;
+      } else {
+        filterClause = `(${COLUMNS[TABLES.CASE_MASTER].CASE_MASTER_ID} = ${caseID} OR ROWID = '${caseID}')`;
+      }
     } else if (crimeNumber) {
       filterClause = `${COLUMNS[TABLES.CASE_MASTER].CRIME_NO} = '${crimeNumber.replace(/'/g, "''")}'`;
     } else if (firNumber) {

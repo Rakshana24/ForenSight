@@ -139,6 +139,70 @@ const Chat: React.FC = () => {
               </Button>
 
               <Button
+                variant="contained"
+                size="small"
+                color="info"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={() => sendChatMessage('Generate Investigation Timeline')}
+                disabled={loading}
+                sx={{
+                  fontWeight: 'bold',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none',
+                    bgcolor: 'info.dark'
+                  }
+                }}
+              >
+                Generate Investigation Timeline
+              </Button>
+
+              <Button
+                variant="contained"
+                size="small"
+                color="warning"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={() => sendChatMessage('Find Similar Cases')}
+                disabled={loading}
+                sx={{
+                  fontWeight: 'bold',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none',
+                    bgcolor: 'warning.dark'
+                  }
+                }}
+              >
+                Find Similar Cases
+              </Button>
+
+              <Button
+                variant="contained"
+                size="small"
+                color="secondary"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={() => sendChatMessage('Recommend Investigation Leads')}
+                disabled={loading}
+                sx={{
+                  fontWeight: 'bold',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  bgcolor: '#7c3aed',
+                  '&:hover': {
+                    boxShadow: 'none',
+                    bgcolor: '#6d28d9'
+                  }
+                }}
+              >
+                Recommend Investigation Leads
+              </Button>
+
+              <Button
                 variant="outlined"
                 size="small"
                 color="primary"
