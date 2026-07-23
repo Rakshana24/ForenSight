@@ -4,6 +4,7 @@ import { Box, Typography, Button, Divider, CircularProgress } from '@mui/materia
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LocalPoliceIcon from '@mui/icons-material/LocalPolice';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useChat } from '../../contexts/ChatContext';
 import ChatBubble from '../../components/Chat/ChatBubble';
 import ChatInput from '../../components/Chat/ChatInput';
@@ -95,6 +96,48 @@ const Chat: React.FC = () => {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              <Button
+                variant="contained"
+                size="small"
+                color="primary"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={() => sendChatMessage('Generate AI Case Summary')}
+                disabled={loading}
+                sx={{
+                  fontWeight: 'bold',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none',
+                    bgcolor: 'primary.dark'
+                  }
+                }}
+              >
+                Generate AI Case Summary
+              </Button>
+
+              <Button
+                variant="contained"
+                size="small"
+                color="secondary"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={() => sendChatMessage('Generate AI Investigation Assessment')}
+                disabled={loading}
+                sx={{
+                  fontWeight: 'bold',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none',
+                    bgcolor: 'secondary.dark'
+                  }
+                }}
+              >
+                AI Investigation Assessment
+              </Button>
+
               <Button
                 variant="outlined"
                 size="small"

@@ -111,14 +111,41 @@ class ConversationRepository {
   async createMessage(msgData) {
     try {
       const table = this.datastore.table('ConversationMessage');
-      const result = await table.insertRow({
-        ConversationID: String(msgData.ConversationID),
-        Role: msgData.Role,
-        // Safeguard to truncate message if it exceeds VarChar(255) size
-        Message: msgData.Message.length > 255 ? msgData.Message.substring(0, 252) + '...' : msgData.Message,
-        MsgTimestamp: msgData.MsgTimestamp || new Date().toISOString()
-      });
-      return result;
+      const maxLen = 255;
+      
+      // If message is short enough, insert it directly
+      if (msgData.Message.length <= maxLen) {
+        const result = await table.insertRow({
+          ConversationID: String(msgData.ConversationID),
+          Role: msgData.Role,
+          Message: msgData.Message,
+          MsgTimestamp: msgData.MsgTimestamp || new Date().toISOString()
+        });
+        return result;
+      }
+
+      // If message is longer than 255, split it into chunks of 240 chars to leave space for prefix
+      const chunkLen = 240;
+      const text = msgData.Message;
+      const chunks = [];
+      for (let i = 0; i < text.length; i += chunkLen) {
+        chunks.push(text.substring(i, i + chunkLen));
+      }
+
+      let firstResult = null;
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkText = `[part:${i}]${chunks[i]}`;
+        const result = await table.insertRow({
+          ConversationID: String(msgData.ConversationID),
+          Role: msgData.Role,
+          Message: chunkText,
+          MsgTimestamp: msgData.MsgTimestamp || new Date().toISOString()
+        });
+        if (i === 0) {
+          firstResult = result;
+        }
+      }
+      return firstResult;
     } catch (error) {
       console.error('[ConversationRepository] Error in createMessage:', error.message);
       throw error;
@@ -140,11 +167,71 @@ class ConversationRepository {
       `;
       const rawRows = await this.zcql.executeZCQLQuery(query);
       if (!rawRows) return [];
-      return rawRows.map(row => this.flattenRow(row));
+      const messages = rawRows.map(row => this.flattenRow(row));
+      return this.stitchMessages(messages);
     } catch (error) {
       console.error('[ConversationRepository] Error in listMessages:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Helper to stitch chunked message parts (prefixed with [part:X]) back together.
+   */
+  stitchMessages(messages) {
+    const stitched = [];
+    let currentGroup = null;
+
+    for (const m of messages) {
+      const messageText = m.Message || '';
+      const match = messageText.match(/^\[part:(\d+)\]([\s\S]*)$/);
+      
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const content = match[2];
+        
+        if (index === 0) {
+          if (currentGroup) {
+            stitched.push(currentGroup);
+          }
+          currentGroup = {
+            ...m,
+            chunks: { [index]: content }
+          };
+        } else if (currentGroup && currentGroup.Role === m.Role) {
+          currentGroup.chunks[index] = content;
+        } else {
+          if (currentGroup) {
+            stitched.push(currentGroup);
+            currentGroup = null;
+          }
+          stitched.push(m);
+        }
+      } else {
+        if (currentGroup) {
+          stitched.push(currentGroup);
+          currentGroup = null;
+        }
+        stitched.push(m);
+      }
+    }
+    
+    if (currentGroup) {
+      stitched.push(currentGroup);
+    }
+
+    return stitched.map(m => {
+      if (m.chunks) {
+        const sortedKeys = Object.keys(m.chunks).map(Number).sort((a, b) => a - b);
+        const fullText = sortedKeys.map(k => m.chunks[k]).join('');
+        delete m.chunks;
+        return {
+          ...m,
+          Message: fullText
+        };
+      }
+      return m;
+    });
   }
 }
 

@@ -259,6 +259,9 @@ class ChatService {
    * @returns {Promise<string>} Human-readable formatted reply
    */
   async processChat(message, baseUrl, sessionId = 'default-session', req, conversationId) {
+    let convoRepo = null;
+    let convoService = null;
+
     // 1. Verify environment configuration
     if (!process.env.QUICKML_ENDPOINT_URL) {
       const err = new Error('Configuration Error: QUICKML_ENDPOINT_URL is not defined in the environment variables.');
@@ -284,9 +287,106 @@ class ChatService {
     // 3. Fetch session memory
     const session = SessionStore.getSession(sessionId);
 
+    // 3.5 Check for Case Summary command
+    const isSummaryCmd = lowerMsg === 'generate summary' || 
+                         lowerMsg === 'generate case summary' || 
+                         lowerMsg === 'generate ai case summary' ||
+                         lowerMsg === 'summary';
+    if (isSummaryCmd) {
+      try {
+        const finalAnswer = await this.generateInvestigationSummary(session, req);
+        
+        // Save to conversation history if active
+        if (conversationId && req) {
+          try {
+            const ConversationRepository = require('../repositories/conversation.repository');
+            const ConversationService = require('./conversation.service');
+            const catalystApp = require('zcatalyst-sdk-node').initialize(req);
+            convoRepo = new ConversationRepository(catalystApp);
+            convoService = new ConversationService(catalystApp);
+
+            await convoRepo.createMessage({
+              ConversationID: conversationId,
+              Role: 'user',
+              Message: cleanMsg,
+              MsgTimestamp: new Date().toISOString()
+            });
+
+            await convoRepo.createMessage({
+              ConversationID: conversationId,
+              Role: 'assistant',
+              Message: finalAnswer,
+              MsgTimestamp: new Date().toISOString()
+            });
+
+            // Update ContextMetadata
+            const updates = {
+              ROWID: conversationId,
+              ContextMetadata: convoService.minifyContext(session)
+            };
+            await convoRepo.updateConversation(updates);
+          } catch (dbErr) {
+            console.error('[ChatService] Error saving summary to history:', dbErr.message);
+          }
+        }
+        return finalAnswer;
+      } catch (err) {
+        console.error('[ChatService] Summary Generation Error:', err.message);
+        return err.message || 'An error occurred while generating the investigation summary.';
+      }
+    }
+
+    // 3.6 Check for AI Investigation Assessment command
+    const isAssessmentCmd = lowerMsg === 'generate assessment' ||
+                            lowerMsg === 'generate investigation assessment' ||
+                            lowerMsg === 'generate ai investigation assessment' ||
+                            lowerMsg === 'ai investigation assessment' ||
+                            lowerMsg === 'assessment';
+    if (isAssessmentCmd) {
+      try {
+        const finalAnswer = await this.generateInvestigationAssessment(session, req);
+        
+        // Save to conversation history if active
+        if (conversationId && req) {
+          try {
+            const ConversationRepository = require('../repositories/conversation.repository');
+            const ConversationService = require('./conversation.service');
+            const catalystApp = require('zcatalyst-sdk-node').initialize(req);
+            convoRepo = new ConversationRepository(catalystApp);
+            convoService = new ConversationService(catalystApp);
+
+            await convoRepo.createMessage({
+              ConversationID: conversationId,
+              Role: 'user',
+              Message: cleanMsg,
+              MsgTimestamp: new Date().toISOString()
+            });
+
+            await convoRepo.createMessage({
+              ConversationID: conversationId,
+              Role: 'assistant',
+              Message: finalAnswer,
+              MsgTimestamp: new Date().toISOString()
+            });
+
+            // Update ContextMetadata
+            const updates = {
+              ROWID: conversationId,
+              ContextMetadata: convoService.minifyContext(session)
+            };
+            await convoRepo.updateConversation(updates);
+          } catch (dbErr) {
+            console.error('[ChatService] Error saving assessment to history:', dbErr.message);
+          }
+        }
+        return finalAnswer;
+      } catch (err) {
+        console.error('[ChatService] Assessment Generation Error:', err.message);
+        return err.message || 'An error occurred while generating the investigation assessment.';
+      }
+    }
+
     // Validate conversationID ownership if passed
-    let convoRepo = null;
-    let convoService = null;
     if (conversationId && req) {
       try {
         const ConversationRepository = require('../repositories/conversation.repository');
@@ -541,6 +641,447 @@ class ChatService {
 
     return finalAnswer;
   }
+
+  async generateInvestigationSummary(session, req) {
+    const catalyst = require('zcatalyst-sdk-node');
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+
+    const CaseRepository = require('../repositories/case.repository');
+    const AccusedRepository = require('../repositories/accused.repository');
+    const VictimRepository = require('../repositories/victim.repository');
+
+    const caseRepo = new CaseRepository(zcql);
+    const accusedRepo = new AccusedRepository(zcql);
+    const victimRepo = new VictimRepository(zcql);
+
+    let caseRecord = null;
+    if (session.lastCaseMasterId) {
+      const isRowId = isNaN(session.lastCaseMasterId) || Number(session.lastCaseMasterId) > 9999999999;
+      if (isRowId) {
+        try {
+          const query = `SELECT * FROM CaseMaster WHERE ROWID = '${session.lastCaseMasterId}'`;
+          const rows = await zcql.executeZCQLQuery(query);
+          if (rows && rows.length > 0) {
+            caseRecord = caseRepo.flattenRow(rows[0]);
+            const cmRecord = rows[0].CaseMaster || {};
+            
+            // Lookup Unit
+            if (cmRecord.PoliceStationID) {
+              const units = await zcql.executeZCQLQuery(`SELECT * FROM Unit WHERE ROWID = '${cmRecord.PoliceStationID}'`);
+              if (units.length > 0) caseRecord.Unit = units[0].Unit;
+            }
+            // Lookup CaseStatusMaster
+            if (cmRecord.CaseStatusID) {
+              const statuses = await zcql.executeZCQLQuery(`SELECT * FROM CaseStatusMaster WHERE ROWID = '${cmRecord.CaseStatusID}'`);
+              if (statuses.length > 0) caseRecord.CaseStatusMaster = statuses[0].CaseStatusMaster;
+            }
+            // Lookup Employee
+            if (cmRecord.PolicePersonID) {
+              const emps = await zcql.executeZCQLQuery(`SELECT * FROM Employee WHERE ROWID = '${cmRecord.PolicePersonID}'`);
+              if (emps.length > 0) caseRecord.Employee = emps[0].Employee;
+            }
+            // Lookup Court
+            if (cmRecord.CourtID) {
+              const courts = await zcql.executeZCQLQuery(`SELECT * FROM Court WHERE ROWID = '${cmRecord.CourtID}'`);
+              if (courts.length > 0) caseRecord.Court = courts[0].Court;
+            }
+            // Resolve District
+            const districtId = caseRecord.Unit?.DistrictID || caseRecord.Employee?.DistrictID;
+            if (districtId) {
+              const dists = await zcql.executeZCQLQuery(`SELECT * FROM District WHERE ROWID = '${districtId}'`);
+              if (dists.length > 0) caseRecord.District = dists[0].District;
+            }
+            // Resolve CrimeHead
+            if (cmRecord.CrimeMajorHeadID) {
+              const heads = await zcql.executeZCQLQuery(`SELECT * FROM CrimeHead WHERE ROWID = '${cmRecord.CrimeMajorHeadID}'`);
+              if (heads.length > 0) caseRecord.CrimeHead = heads[0].CrimeHead;
+            }
+            // Resolve GravityOffence
+            if (cmRecord.GravityOffenceID) {
+              const gravities = await zcql.executeZCQLQuery(`SELECT * FROM GravityOffence WHERE ROWID = '${cmRecord.GravityOffenceID}'`);
+              if (gravities.length > 0) caseRecord.GravityOffence = gravities[0].GravityOffence;
+            }
+          }
+        } catch (e) {
+          console.error('[ChatService] Failed to findCase by ROWID:', e.message);
+        }
+      }
+      
+      if (!caseRecord) {
+        try {
+          caseRecord = await caseRepo.findCase({ caseID: session.lastCaseMasterId });
+        } catch (err) {
+          console.warn('[ChatService] findCase by business ID failed:', err.message);
+        }
+      }
+    }
+
+    if (!caseRecord && session.lastCrimeNo) {
+      try {
+        caseRecord = await caseRepo.findCase({ crimeNumber: session.lastCrimeNo });
+      } catch (err) {
+        console.warn('[ChatService] findCase by crimeNumber failed:', err.message);
+      }
+    }
+
+    if (!caseRecord && session.lastCaseNo) {
+      try {
+        caseRecord = await caseRepo.findCase({ firNumber: session.lastCaseNo });
+      } catch (err) {
+        console.warn('[ChatService] findCase by firNumber failed:', err.message);
+      }
+    }
+
+    if (!caseRecord) {
+      throw new Error('No active investigation details found in the current conversation session. Please search for a case or crime record first.');
+    }
+
+    const caseRowID = caseRecord.ROWID;
+    let victims = [];
+    let accused = [];
+
+    try {
+      victims = await victimRepo.findVictim({ caseID: caseRowID });
+    } catch (e) {
+      console.warn('[ChatService] Failed to fetch victims for summary:', e.message);
+    }
+
+    try {
+      accused = await accusedRepo.findAccused({ caseID: caseRowID });
+    } catch (e) {
+      console.warn('[ChatService] Failed to fetch accused for summary:', e.message);
+    }
+
+    const llm = this.getLLMService(req);
+    const promptText = getCaseSummaryPrompt(caseRecord, victims, accused);
+    console.log(`[ChatService] Generating case summary via QuickML...`);
+    const summaryText = await llm.generateText(promptText);
+    return summaryText;
+  }
+
+  async generateInvestigationAssessment(session, req) {
+    const catalyst = require('zcatalyst-sdk-node');
+    const app = catalyst.initialize(req);
+    const zcql = app.zcql();
+
+    const CaseRepository = require('../repositories/case.repository');
+    const AccusedRepository = require('../repositories/accused.repository');
+    const VictimRepository = require('../repositories/victim.repository');
+
+    const caseRepo = new CaseRepository(zcql);
+    const accusedRepo = new AccusedRepository(zcql);
+    const victimRepo = new VictimRepository(zcql);
+
+    let caseRecord = null;
+    if (session.lastCaseMasterId) {
+      const isRowId = isNaN(session.lastCaseMasterId) || Number(session.lastCaseMasterId) > 9999999999;
+      if (isRowId) {
+        try {
+          const query = `SELECT * FROM CaseMaster WHERE ROWID = '${session.lastCaseMasterId}'`;
+          const rows = await zcql.executeZCQLQuery(query);
+          if (rows && rows.length > 0) {
+            caseRecord = caseRepo.flattenRow(rows[0]);
+            const cmRecord = rows[0].CaseMaster || {};
+            
+            // Lookup Unit
+            if (cmRecord.PoliceStationID) {
+              const units = await zcql.executeZCQLQuery(`SELECT * FROM Unit WHERE ROWID = '${cmRecord.PoliceStationID}'`);
+              if (units.length > 0) caseRecord.Unit = units[0].Unit;
+            }
+            // Lookup CaseStatusMaster
+            if (cmRecord.CaseStatusID) {
+              const statuses = await zcql.executeZCQLQuery(`SELECT * FROM CaseStatusMaster WHERE ROWID = '${cmRecord.CaseStatusID}'`);
+              if (statuses.length > 0) caseRecord.CaseStatusMaster = statuses[0].CaseStatusMaster;
+            }
+            // Lookup Employee
+            if (cmRecord.PolicePersonID) {
+              const emps = await zcql.executeZCQLQuery(`SELECT * FROM Employee WHERE ROWID = '${cmRecord.PolicePersonID}'`);
+              if (emps.length > 0) caseRecord.Employee = emps[0].Employee;
+            }
+            // Lookup Court
+            if (cmRecord.CourtID) {
+              const courts = await zcql.executeZCQLQuery(`SELECT * FROM Court WHERE ROWID = '${cmRecord.CourtID}'`);
+              if (courts.length > 0) caseRecord.Court = courts[0].Court;
+            }
+            // Resolve District
+            const districtId = caseRecord.Unit?.DistrictID || caseRecord.Employee?.DistrictID;
+            if (districtId) {
+              const dists = await zcql.executeZCQLQuery(`SELECT * FROM District WHERE ROWID = '${districtId}'`);
+              if (dists.length > 0) caseRecord.District = dists[0].District;
+            }
+            // Resolve CrimeHead
+            if (cmRecord.CrimeMajorHeadID) {
+              const heads = await zcql.executeZCQLQuery(`SELECT * FROM CrimeHead WHERE ROWID = '${cmRecord.CrimeMajorHeadID}'`);
+              if (heads.length > 0) caseRecord.CrimeHead = heads[0].CrimeHead;
+            }
+            // Resolve GravityOffence
+            if (cmRecord.GravityOffenceID) {
+              const gravities = await zcql.executeZCQLQuery(`SELECT * FROM GravityOffence WHERE ROWID = '${cmRecord.GravityOffenceID}'`);
+              if (gravities.length > 0) caseRecord.GravityOffence = gravities[0].GravityOffence;
+            }
+          }
+        } catch (e) {
+          console.error('[ChatService] Failed to findCase by ROWID for assessment:', e.message);
+        }
+      }
+      
+      if (!caseRecord) {
+        try {
+          caseRecord = await caseRepo.findCase({ caseID: session.lastCaseMasterId });
+        } catch (err) {
+          console.warn('[ChatService] findCase by business ID failed for assessment:', err.message);
+        }
+      }
+    }
+
+    if (!caseRecord && session.lastCrimeNo) {
+      try {
+        caseRecord = await caseRepo.findCase({ crimeNumber: session.lastCrimeNo });
+      } catch (err) {
+        console.warn('[ChatService] findCase by crimeNumber failed for assessment:', err.message);
+      }
+    }
+
+    if (!caseRecord && session.lastCaseNo) {
+      try {
+        caseRecord = await caseRepo.findCase({ firNumber: session.lastCaseNo });
+      } catch (err) {
+        console.warn('[ChatService] findCase by firNumber failed for assessment:', err.message);
+      }
+    }
+
+    if (!caseRecord) {
+      throw new Error('No active investigation details found in the current conversation session. Please search for a case or crime record first.');
+    }
+
+    // 1. Programmatically detect case status (Active vs. Closed)
+    const statusName = (caseRecord.CaseStatusMaster && caseRecord.CaseStatusMaster.CaseStatusName) || '';
+    let isStatusDetected = false;
+    let statusLabel = 'Case status unavailable.';
+
+    if (statusName) {
+      const lowerStatus = statusName.toLowerCase();
+      if (lowerStatus.startsWith('closed') || lowerStatus === 'convicted' || lowerStatus === 'acquitted') {
+        isStatusDetected = true;
+        statusLabel = 'Closed';
+      } else if (lowerStatus === 'registered' || lowerStatus === 'under investigation' || lowerStatus === 'arrest made' || lowerStatus === 'charge sheeted' || lowerStatus === 'under trial') {
+        isStatusDetected = true;
+        statusLabel = 'Active';
+      }
+    }
+
+    // If status cannot be determined, display "Case status unavailable." programmatically to avoid redundant QuickML call
+    if (!isStatusDetected) {
+      return 'Case status unavailable.';
+    }
+
+    const caseRowID = caseRecord.ROWID;
+    let victims = [];
+    let accused = [];
+
+    try {
+      victims = await victimRepo.findVictim({ caseID: caseRowID });
+    } catch (e) {
+      console.warn('[ChatService] Failed to fetch victims for assessment:', e.message);
+    }
+
+    try {
+      accused = await accusedRepo.findAccused({ caseID: caseRowID });
+    } catch (e) {
+      console.warn('[ChatService] Failed to fetch accused for assessment:', e.message);
+    }
+
+    const llm = this.getLLMService(req);
+    const promptText = getCaseAssessmentPrompt(caseRecord, victims, accused, statusLabel);
+    console.log(`[ChatService] Generating case assessment via QuickML...`);
+    const assessmentText = await llm.generateText(promptText);
+    return assessmentText;
+  }
+}
+
+function getCaseSummaryPrompt(caseRecord, victims, accused) {
+  const data = {
+    caseNumber: caseRecord.CaseNo || 'Information not available.',
+    crimeType: (caseRecord.CrimeHead && caseRecord.CrimeHead.CrimeGroupName) || 'Information not available.',
+    status: (caseRecord.CaseStatusMaster && caseRecord.CaseStatusMaster.CaseStatusName) || 'Information not available.',
+    briefFacts: caseRecord.BriefFacts || 'Information not available.',
+    officer: (caseRecord.Employee && caseRecord.Employee.FirstName) || 'Information not available.',
+    policeStation: (caseRecord.Unit && caseRecord.Unit.UnitName) || 'Information not available.',
+    district: (caseRecord.District && caseRecord.District.DistrictName) || 'Information not available.',
+    court: (caseRecord.Court && caseRecord.Court.CourtName) || 'Information not available.',
+    victims: (victims && victims.length > 0) ? victims.map(v => ({
+      name: v.VictimName || 'Information not available.',
+      age: v.AgeYear || 'Information not available.',
+      gender: v.GenderID == 1 ? 'Male' : (v.GenderID == 2 ? 'Female' : 'Information not available.')
+    })) : [],
+    criminals: (accused && accused.length > 0) ? accused.map(a => ({
+      name: a.AccusedName || 'Information not available.',
+      aliases: 'Information not available.'
+    })) : []
+  };
+
+  return `You are a Senior Zoho Catalyst Solution Architect, Senior AI Engineer, and Crime Intelligence Assistant.
+Your task is to generate a structured Case Summary for the current investigation using ONLY the facts provided in the JSON data below.
+
+Strict Prompt Rules:
+1. Ground your response ONLY in the provided JSON data. Never fabricate or extrapolate facts.
+2. If any field or detail is missing, empty, or not present in the data, state "Information not available." exactly. Do not invent any names, dates, ages, genders, or facts.
+3. Keep the tone extremely professional, concise, and clear.
+4. The output MUST follow the exact structure below. Do not add extra markdown formatting, lists, headings, or introductory/concluding text. Only output the exact structured sections.
+
+Required Output Format:
+--------------------------------
+CASE OVERVIEW
+Case Number: [Case Number]
+Crime Type: [Crime Type]
+Investigation Status: [Investigation Status]
+
+SUMMARY
+[Short investigation summary generated by AI using the briefFacts and other case data.]
+
+VICTIM DETAILS
+Name: [Victim Name]
+Age: [Victim Age]
+Gender: [Victim Gender]
+(If there are multiple victims, list their details consecutively in the same format. If no victims are present, state "Information not available." for each field under a single VICTIM DETAILS block.)
+
+CRIMINAL DETAILS
+Name: [Criminal Name]
+Known aliases (if available): [Aliases]
+(If there are multiple criminals/accused, list their details consecutively in the same format. If no criminals are present, state "Information not available." for each field under a single CRIMINAL DETAILS block.)
+
+INVESTIGATION
+Investigating Officer: [Investigating Officer]
+Police Station: [Police Station]
+District: [District]
+Court Handling: [Court Handling]
+
+KEY FINDINGS
+• [Important observation 1 - generated from briefFacts or case details]
+• [Important observation 2 - generated from briefFacts or case details]
+• [Important observation 3 - generated from briefFacts or case details]
+(If no findings can be derived, list three bullets stating "Information not available.")
+
+CURRENT STATUS
+[Current investigation progress - based on the investigation status and case details.]
+--------------------------------
+
+Here is the JSON data to summarize:
+${JSON.stringify(data, null, 2)}`;
+}
+
+function getCaseAssessmentPrompt(caseRecord, victims, accused, statusLabel) {
+  const data = {
+    caseNumber: caseRecord.CaseNo || 'Information not available.',
+    crimeType: (caseRecord.CrimeHead && caseRecord.CrimeHead.CrimeGroupName) || 'Information not available.',
+    status: (caseRecord.CaseStatusMaster && caseRecord.CaseStatusMaster.CaseStatusName) || 'Information not available.',
+    briefFacts: caseRecord.BriefFacts || 'Information not available.',
+    officer: (caseRecord.Employee && caseRecord.Employee.FirstName) || 'Information not available.',
+    policeStation: (caseRecord.Unit && caseRecord.Unit.UnitName) || 'Information not available.',
+    district: (caseRecord.District && caseRecord.District.DistrictName) || 'Information not available.',
+    court: (caseRecord.Court && caseRecord.Court.CourtName) || 'Information not available.',
+    victims: (victims && victims.length > 0) ? victims.map(v => ({
+      name: v.VictimName || 'Information not available.',
+      age: v.AgeYear || 'Information not available.',
+      gender: v.GenderID == 1 ? 'Male' : (v.GenderID == 2 ? 'Female' : 'Information not available.')
+    })) : [],
+    accused: (accused && accused.length > 0) ? accused.map(a => ({
+      name: a.AccusedName || 'Information not available.',
+      age: a.AgeYear || 'Information not available.',
+      gender: a.GenderID == 1 ? 'Male' : (a.GenderID == 2 ? 'Female' : 'Information not available.')
+    })) : []
+  };
+
+  return `You are a professional crime intelligence analyst assisting law enforcement investigators.
+Analyze the following case details, victim profiles, and accused profiles to produce a professional, hallucination-free Investigation Assessment.
+
+Case Details JSON:
+${JSON.stringify(data, null, 2)}
+
+Case Status Categorization: ${statusLabel}
+
+STRICT ASSESSMENT RULES:
+1. NEVER fabricate any evidence, witnesses, suspects, findings, or recommendations.
+2. If any piece of information is not present in the provided JSON, use "Information not available."
+3. Follow the output format strictly based on the Case Status Categorization. Do NOT add extra markdown bolding, lists, headings, or introductory/concluding text. Only output the exact structured sections.
+
+=== IF Case Status Categorization is "Case status unavailable." ===
+Output exactly:
+Case status unavailable.
+
+=== IF Case Status Categorization is "Active" ===
+Output format (use exact headers in uppercase, with dashes below as dividers):
+----------------------------------
+INVESTIGATION STATUS
+Active
+
+CASE OVERVIEW
+[A short paragraph summarizing the facts of the investigation]
+
+KEY FINDINGS
+• [Finding 1]
+• [Finding 2]
+• [Finding 3]
+(Include bullet points matching facts. If no key findings exist, output "Information not available.")
+
+INVESTIGATION GAPS
+• [Gap 1]
+• [Gap 2]
+• [Gap 3]
+(Identify logical gaps such as missing forensic analysis, witnesses not interviewed, or evidence pending verification based on the facts. Do NOT invent specific names of evidence or witnesses that do not exist, keep it logical to the facts, or use "Information not available.")
+
+RECOMMENDED NEXT ACTIONS
+• [Action 1]
+• [Action 2]
+• [Action 3]
+(Provide concrete, actionable steps like cross-checking FIRs, interviewing neighbors, or examining scene records. Do NOT invent fabricated items.)
+
+RISK LEVEL
+[Specify: Low OR Medium OR High]
+(Based on the crime type, gravity, and accused details)
+
+OVERALL AI ASSESSMENT
+[Provide a professional, analytical summary of the current investigation's progress, strengths, and immediate needs.]
+----------------------------------
+
+=== IF Case Status Categorization is "Closed" ===
+Output format (use exact headers in uppercase, with dashes below as dividers):
+----------------------------------
+CASE STATUS
+Closed
+
+CASE OVERVIEW
+[A short paragraph summarizing the facts and the conclusion of the case]
+
+CASE OUTCOME
+Investigation completed.
+
+KEY FINDINGS
+• [Key evidence/milestone 1]
+• [Key evidence/milestone 2]
+• [Key evidence/milestone 3]
+(List important breakthroughs, evidence collected, or milestones based on the facts.)
+
+SUCCESS FACTORS
+• [Factor 1]
+• [Factor 2]
+• [Factor 3]
+(Identify what led to resolution, such as witness cooperation, quick arrest, or forensic evidence.)
+
+LESSONS LEARNED
+• [Lesson 1]
+• [Lesson 2]
+• [Lesson 3]
+(Analytical lessons or future best practices/recommendations for similar cases.)
+
+CASE QUALITY ASSESSMENT
+[Specify: Excellent OR Good OR Average OR Needs Review]
+(Assess how thoroughly the case was resolved based on facts)
+
+OVERALL AI ASSESSMENT
+[Provide a professional, analytical summary explaining how the investigation concluded and highlighting key performance metrics.]
+----------------------------------`;
 }
 
 module.exports = ChatService;
