@@ -3,6 +3,8 @@ export interface Message {
   role: string;
   message: string;
   timestamp: string;
+  isVoice?: boolean;
+  audio?: string;
 }
 
 export interface Conversation {
@@ -20,4 +22,5 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   response: string;
+  audio: string | null;
 }

@@ -14,7 +14,7 @@ export interface ChatContextType {
   loadConversations: () => Promise<void>;
   selectConversation: (id: string) => Promise<void>;
   createNewConversation: (title?: string) => Promise<string>;
-  sendChatMessage: (text: string) => Promise<void>;
+  sendChatMessage: (text: string, isVoiceInput?: boolean) => Promise<void>;
   deleteSelectedConversation: (id: string) => Promise<void>;
   exportCurrentPDF: () => Promise<void>;
   resetCurrentConversation: () => Promise<void>;
@@ -96,7 +96,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const sendChatMessage = async (text: string) => {
+  const sendChatMessage = async (text: string, isVoiceInput: boolean = false) => {
     if (!currentConversation) return;
 
     setLoading(true);
@@ -107,7 +107,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       messageId: `user-${Date.now()}`,
       role: 'User',
       message: text,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      isVoice: isVoiceInput
     };
 
     setCurrentConversation(prev => {
@@ -120,14 +121,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // Send to backend
-      const responseText = await chatService.sendMessage(text, sessionId, currentConversation.conversationId);
+      const chatData = await chatService.sendMessage(text, sessionId, currentConversation.conversationId, isVoiceInput);
 
       // Append assistant reply
       const assistantMsg: Message = {
         messageId: `assistant-${Date.now()}`,
         role: 'Assistant',
-        message: responseText,
-        timestamp: new Date().toISOString()
+        message: chatData.response,
+        timestamp: new Date().toISOString(),
+        isVoice: isVoiceInput,
+        audio: chatData.audio || undefined
       };
 
       setCurrentConversation(prev => {

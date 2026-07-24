@@ -5,7 +5,7 @@ import SendIcon from '@mui/icons-material/Send';
 import VoiceRecorder from './VoiceRecorder';
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, isVoiceInput?: boolean) => void;
   disabled?: boolean;
   onVoiceRecordingComplete?: (blob: Blob | null) => void;
 }
@@ -14,6 +14,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onVoiceRecordin
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('en');
   const [recorderState, setRecorderState] = useState<'idle' | 'recording' | 'recorded' | 'transcribing'>('idle');
+  const [isVoiceInput, setIsVoiceInput] = useState(false);
 
   const isTranscribing = recorderState === 'transcribing';
   const isInputDisabled = disabled || isTranscribing;
@@ -21,8 +22,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onVoiceRecordin
   const handleSend = () => {
     const cleanText = text.trim();
     if (cleanText) {
-      onSend(cleanText);
+      onSend(cleanText, isVoiceInput);
       setText('');
+      setIsVoiceInput(false);
     }
   };
 
@@ -61,9 +63,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onVoiceRecordin
 
       {/* Modular Voice Recorder Component */}
       <VoiceRecorder
-        onRecordingComplete={onVoiceRecordingComplete}
+        onRecordingComplete={onVoiceRecordingComplete || (() => {})}
         onTranscriptionComplete={(transcribedText) => {
           setText(transcribedText);
+          setIsVoiceInput(true);
         }}
         language={language}
         onStateChange={setRecorderState}
@@ -78,7 +81,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onVoiceRecordin
             multiline
             maxRows={4}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setIsVoiceInput(false);
+            }}
             onKeyDown={handleKeyDown}
             placeholder={isTranscribing ? 'Transcribing voice input...' : 'Type your message here... (Press Enter to send)'}
             disabled={isInputDisabled}

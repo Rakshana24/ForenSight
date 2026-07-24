@@ -21,8 +21,22 @@ const Chat: React.FC = () => {
     loading
   } = useChat();
 
-  const [recordedAudioBlob, setRecordedAudioBlob] = React.useState<Blob | null>(null);
+  const [_recordedAudioBlob, setRecordedAudioBlob] = React.useState<Blob | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const audioCacheRef = useRef<Record<string, string>>({});
+
+  // Revoke temporary audio URLs when active conversation changes
+  useEffect(() => {
+    const cache = audioCacheRef.current;
+    Object.values(cache).forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke audio object URL:', e);
+      }
+    });
+    audioCacheRef.current = {};
+  }, [currentConversation?.conversationId]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -249,9 +263,18 @@ const Chat: React.FC = () => {
 
           {/* 2. Messages Pane */}
           <Box sx={{ flex: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', bgcolor: '#F9FAFB' }}>
-            {currentConversation.messages.map((msg) => (
-              <ChatBubble key={msg.messageId} msg={msg} />
-            ))}
+            {currentConversation.messages.map((msg, index) => {
+              const prevMsg = index > 0 ? currentConversation.messages[index - 1] : null;
+              const originalPrompt = prevMsg && prevMsg.role === 'User' ? prevMsg.message : '';
+              return (
+                <ChatBubble
+                  key={msg.messageId}
+                  msg={msg}
+                  originalPrompt={originalPrompt}
+                  audioCacheRef={audioCacheRef}
+                />
+              );
+            })}
 
             {/* Assistant typing indicator */}
             {loading && (

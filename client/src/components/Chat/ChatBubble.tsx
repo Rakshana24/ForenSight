@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography, Card, CardContent, Divider, Grid } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Card, CardContent, Divider, Grid, CircularProgress, Button } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PersonIcon from '@mui/icons-material/Person';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -12,9 +12,12 @@ import SchoolIcon from '@mui/icons-material/School';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import InfoIcon from '@mui/icons-material/Info';
 import type { Message } from '../../types';
+import { chatService } from '../../services/chatService';
 
 interface ChatBubbleProps {
   msg: Message;
+  originalPrompt?: string;
+  audioCacheRef?: React.MutableRefObject<Record<string, string>>;
 }
 
 const parseCaseSummary = (text: string) => {
@@ -1020,7 +1023,164 @@ const renderInvestigationLeadsCard = (data: InvestigationLeadsData) => {
   );
 };
 
-const ChatBubble: React.FC<ChatBubbleProps> = ({ msg }) => {
+interface VoicePlayerProps {
+  messageId: string;
+  text: string;
+  originalPrompt: string;
+  audioCacheRef: React.MutableRefObject<Record<string, string>>;
+  audioBase64?: string;
+}
+
+const VoicePlayer: React.FC<VoicePlayerProps> = ({ messageId, text, originalPrompt, audioCacheRef, audioBase64 }) => {
+  const [audioUrl, setAudioUrl] = useState<string | null>(audioBase64 || audioCacheRef.current[messageId] || null);
+  const [loading, setLoading] = useState<boolean>(!audioBase64 && !audioCacheRef.current[messageId]);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAndPlayAudio = async () => {
+      // If base64 audio payload is provided, use it directly for simultaneous playback
+      if (audioBase64) {
+        setAudioUrl(audioBase64);
+        setLoading(false);
+
+        // Autoplay voice response
+        const audio = new Audio(audioBase64);
+        audioRef.current = audio;
+        audio.onplay = () => setIsPlaying(true);
+        audio.onended = () => setIsPlaying(false);
+        audio.onpause = () => setIsPlaying(false);
+        audio.play().catch((e) => {
+          console.warn('Speech autoplay failed or was blocked by browser:', e);
+        });
+        return;
+      }
+
+      if (audioCacheRef.current[messageId]) {
+        setAudioUrl(audioCacheRef.current[messageId]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(false);
+      try {
+        const blob = await chatService.generateTTS(text, originalPrompt, true);
+        if (!active) return;
+        const url = URL.createObjectURL(blob);
+        audioCacheRef.current[messageId] = url;
+        setAudioUrl(url);
+        setLoading(false);
+
+        // Autoplay voice response
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onplay = () => setIsPlaying(true);
+        audio.onended = () => setIsPlaying(false);
+        audio.onpause = () => setIsPlaying(false);
+        audio.play().catch((e) => {
+          console.warn('Speech autoplay failed or was blocked by browser:', e);
+        });
+      } catch (err) {
+        console.error('[VoicePlayer] Failed to load/synthesize audio:', err);
+        if (active) {
+          setError(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    loadAndPlayAudio();
+
+    return () => {
+      active = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [messageId, text, originalPrompt, audioCacheRef, audioBase64]);
+
+  const handlePlayAgain = () => {
+    if (!audioUrl) return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.onplay = () => setIsPlaying(true);
+    audio.onended = () => setIsPlaying(false);
+    audio.onpause = () => setIsPlaying(false);
+    audio.play().catch((e) => console.error('[VoicePlayer] Playback error:', e));
+  };
+
+  const handlePause = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+        <CircularProgress size={14} />
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+          🔊 Generating Voice...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (error || !audioUrl) {
+    return null; // Fail silently, keeping text response
+  }
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+      {isPlaying ? (
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handlePause}
+          sx={{
+            py: 0.25,
+            px: 1,
+            fontSize: '0.75rem',
+            textTransform: 'none',
+            borderRadius: '4px',
+            borderColor: '#E5E7EB',
+            color: 'text.secondary',
+            '&:hover': { bgcolor: '#f3f4f6' }
+          }}
+        >
+          ⏸ Pause
+        </Button>
+      ) : (
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handlePlayAgain}
+          sx={{
+            py: 0.25,
+            px: 1,
+            fontSize: '0.75rem',
+            textTransform: 'none',
+            borderRadius: '4px',
+            borderColor: '#E5E7EB',
+            color: 'text.secondary',
+            '&:hover': { bgcolor: '#f3f4f6' }
+          }}
+        >
+          ▶ Play Again
+        </Button>
+      )}
+    </Box>
+  );
+};
+
+const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCacheRef }) => {
   const isUser = msg.role.toLowerCase() === 'user';
   const [showInteractive, setShowInteractive] = React.useState(true);
   const [expandedMilestones, setExpandedMilestones] = React.useState<Record<number, boolean>>({});
@@ -1822,6 +1982,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg }) => {
         <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
           {msg.message}
         </Typography>
+        {!isUser && msg.isVoice && audioCacheRef && (
+          <VoicePlayer
+            messageId={msg.messageId}
+            text={msg.message}
+            originalPrompt={originalPrompt || ''}
+            audioCacheRef={audioCacheRef}
+            audioBase64={msg.audio}
+          />
+        )}
         {msg.timestamp && (
           <Typography
             variant="caption"
