@@ -1858,12 +1858,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
         <Card
           sx={{
             width: '100%',
-            bgcolor: '#ffffff',
+            bgcolor: 'background.paper',
             maxWidth: '85%',
-            border: `1px solid ${cardBorderColor}`,
+            border: '1px solid',
+            borderColor: 'divider',
             borderRadius: 2,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            transition: 'background-color 0.3s ease, border-color 0.3s ease'
           }}
         >
           {/* Header */}
@@ -1915,12 +1917,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
         <Card
           sx={{
             width: '100%',
-            bgcolor: '#ffffff',
+            bgcolor: 'background.paper',
             maxWidth: '85%',
-            border: `1px solid ${cardBorderColor}`,
+            border: '1px solid',
+            borderColor: 'divider',
             borderRadius: 2,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            transition: 'background-color 0.3s ease, border-color 0.3s ease'
           }}
         >
           {/* Header */}
@@ -1963,12 +1967,19 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
       <Box
         sx={{
           maxWidth: '75%',
-          backgroundColor: isUser ? '#eff6ff' : '#f8fafc',
+          backgroundColor: (theme) => 
+            isUser 
+              ? (theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.06)')
+              : (theme.palette.mode === 'dark' ? '#1E1E2A' : '#F8FAFC'),
           border: '1px solid',
-          borderColor: isUser ? '#bfdbfe' : '#e2e8f0',
+          borderColor: (theme) =>
+            isUser 
+              ? 'primary.main'
+              : 'divider',
           borderRadius: 2,
           p: 2,
           boxShadow: 'none',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease'
         }}
       >
         <Typography

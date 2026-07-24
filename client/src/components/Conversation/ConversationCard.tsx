@@ -35,21 +35,21 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
         mb: 1,
         py: 1.2,
         px: 2,
-        backgroundColor: isActive ? '#eff6ff' : '#ffffff',
+        backgroundColor: isActive ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
         border: '1px solid',
-        borderColor: isActive ? '#3b82f6' : '#e5e7eb',
+        borderColor: isActive ? 'primary.main' : 'divider',
         borderLeft: '4px solid',
-        borderLeftColor: isActive ? '#1e3a8a' : '#94a3b8',
+        borderLeftColor: isActive ? 'primary.main' : 'text.disabled',
         boxShadow: isActive ? '0 1px 2px 0 rgba(0,0,0,0.05)' : 'none',
         '&.Mui-selected': {
-          backgroundColor: '#eff6ff',
+          backgroundColor: 'rgba(124, 58, 237, 0.08)',
           '&:hover': {
-            backgroundColor: '#dbeafe',
+            backgroundColor: 'rgba(124, 58, 237, 0.12)',
           }
         },
         '&:hover': {
-          backgroundColor: '#f8fafc',
-          borderColor: '#cbd5e1'
+          backgroundColor: 'action.hover',
+          borderColor: 'primary.light'
         }
       }}
     >
@@ -61,9 +61,9 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
               <Typography
                 variant="body2"
                 noWrap
-                sx={{ flex: 1, fontWeight: isActive ? 'bold' : 500, color: isActive ? '#1e3a8a' : '#1f2937' }}
+                sx={{ flex: 1, fontWeight: isActive ? 'bold' : 500, color: isActive ? 'primary.main' : 'text.primary' }}
               >
-                {convo.title}
+                {convo.title.replace(/siri/gi, 'New')}
               </Typography>
               <Chip
                 label="Active"
@@ -72,8 +72,8 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
                   height: 18,
                   fontSize: '0.65rem',
                   fontWeight: 'bold',
-                  bgcolor: isActive ? '#dbeafe' : '#f1f5f9',
-                  color: isActive ? '#1e3a8a' : '#4b5563',
+                  bgcolor: isActive ? 'rgba(124, 58, 237, 0.15)' : 'action.selected',
+                  color: isActive ? 'primary.main' : 'text.secondary',
                   borderRadius: '3px',
                   px: 0.5,
                   '& .MuiChip-label': { px: 0 }
@@ -97,7 +97,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
             color: 'text.disabled',
             '&:hover': {
               color: 'error.main',
-              backgroundColor: '#fee2e2'
+              backgroundColor: 'rgba(239, 68, 68, 0.08)'
             }
           }}
         >

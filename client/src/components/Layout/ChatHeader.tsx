@@ -1,11 +1,15 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box, Chip, Avatar } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, Chip, Avatar, IconButton, Tooltip } from '@mui/material';
 import LocalPoliceIcon from '@mui/icons-material/LocalPolice';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { useChat } from '../../contexts/ChatContext';
+import { useAppTheme } from '../../contexts/ThemeContext';
 
 const ChatHeader: React.FC = () => {
   const { sessionId } = useChat();
+  const { themeMode, toggleTheme } = useAppTheme();
 
   return (
     <AppBar
@@ -14,9 +18,11 @@ const ChatHeader: React.FC = () => {
       elevation={0}
       sx={{
         height: 64,
-        borderBottom: '1px solid #E5E7EB',
-        bgcolor: '#FFFFFF',
-        justifyContent: 'center'
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        justifyContent: 'center',
+        transition: 'background-color 0.3s ease, border-color 0.3s ease'
       }}
     >
       <Toolbar sx={{ px: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -41,8 +47,28 @@ const ChatHeader: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Right Section: Session ID badge and User Profile Avatar */}
+        {/* Right Section: Theme switch, Session ID badge and User Profile Avatar */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Global Theme Switcher */}
+          <Tooltip title={themeMode === 'light' ? 'Tactical Dark Mode' : 'Standard Light Mode'}>
+            <IconButton 
+              onClick={toggleTheme}
+              sx={{ 
+                color: 'primary.main',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: '4px',
+                p: 0.8,
+                bgcolor: 'action.hover',
+                '&:hover': {
+                  bgcolor: 'action.selected'
+                }
+              }}
+            >
+              {themeMode === 'light' ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
           <Chip
             icon={<AccountCircleIcon fontSize="small" />}
             label={`Session: ${sessionId}`}
@@ -53,10 +79,10 @@ const ChatHeader: React.FC = () => {
               borderRadius: '4px',
               fontWeight: 'bold',
               fontSize: '0.85rem',
-              borderColor: '#E5E7EB',
-              color: '#1F2937',
+              borderColor: 'divider',
+              color: 'text.primary',
               '& .MuiChip-icon': {
-                color: '#1E3A8A'
+                color: 'primary.main'
               }
             }}
           />
@@ -65,10 +91,11 @@ const ChatHeader: React.FC = () => {
             sx={{ 
               width: 36, 
               height: 36, 
-              bgcolor: '#1E3A8A', 
+              bgcolor: 'primary.main', 
               fontSize: '0.85rem',
               fontWeight: 'bold',
-              border: '2px solid #E5E7EB'
+              border: '2px solid',
+              borderColor: 'divider'
             }}
           >
             IO

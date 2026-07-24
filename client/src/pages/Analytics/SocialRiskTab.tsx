@@ -34,32 +34,31 @@ interface SocialRiskTabProps {
   filterOpts: FilterOptions | null;
 }
 
-const THEME = {
-  primary: '#09084eff',
-  dark: '#09013bff',
-  light: '#261b85ff',
-  lavender: '#E0E7FF',
-  bg: '#F8FAFC',
-  border: '#E2E8F0',
-  textMain: '#0F172A',
-  textSecondary: '#475569',
-  insightBg: '#EFF6FF',
-  insightText: '#1E40AF'
-};
-
-const PremiumCardStyle = {
-  borderRadius: '16px',
-  height: '100%',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
-  border: `1px solid ${THEME.border}`,
-  transition: 'transform 0.2s',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 8px 30px rgba(9, 8, 78, 0.08)'
-  }
-};
+import { useTheme } from '@mui/material/styles';
 
 export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  const primaryColor = theme.palette.primary.main;
+  const secondaryColor = theme.palette.primary.light;
+  const darkColor = theme.palette.primary.dark;
+  const lavenderColor = isDark ? 'rgba(124, 58, 237, 0.15)' : '#E0E7FF';
+
+  const PremiumCardStyle = {
+    borderRadius: '16px',
+    height: '100%',
+    boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.2)' : '0 4px 20px rgba(0, 0, 0, 0.03)',
+    border: '1px solid',
+    borderColor: 'divider',
+    backgroundColor: 'background.paper',
+    transition: 'transform 0.2s, box-shadow 0.2s, background-color 0.3s ease, border-color 0.3s ease',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: isDark ? '0 8px 30px rgba(0, 0, 0, 0.3)' : '0 8px 30px rgba(9, 8, 78, 0.08)'
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
 
@@ -82,7 +81,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress sx={{ color: THEME.primary }} />
+        <CircularProgress sx={{ color: 'primary.main' }} />
       </Box>
     );
   }
@@ -90,16 +89,16 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
   if (!data) return null;
 
   const renderRiskBadge = () => {
-    let color = THEME.primary;
+    let color = primaryColor;
     let icon = <CheckCircleIcon sx={{ fontSize: 40, color }} />;
     let text = "LOW RISK";
 
     if (data.riskLevel === 'High') {
-      color = '#d32f2f'; // Error red
+      color = theme.palette.error.main;
       icon = <ErrorIcon sx={{ fontSize: 40, color }} />;
       text = "HIGH RISK";
     } else if (data.riskLevel === 'Moderate') {
-      color = '#ed6c02'; // Warning orange
+      color = theme.palette.warning.main;
       icon = <WarningIcon sx={{ fontSize: 40, color }} />;
       text = "MODERATE RISK";
     }
@@ -109,7 +108,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
         <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
           <Box sx={{ mr: 3 }}>{icon}</Box>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: THEME.textMain }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
               Overall Social Risk Assessment
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 800, color, mt: 0.5 }}>
@@ -122,13 +121,11 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: THEME.bg, minHeight: '100%' }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, color: THEME.dark, mb: 1 }}>
-          Social Risk Analysis
-        </Typography>
-        <Typography variant="body1" sx={{ color: THEME.textSecondary, maxWidth: 800 }}>
+    <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
+      
+      {/* Subtitle Description */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 800 }}>
           Deterministic, rule-based evaluation of regional vulnerabilities drawn from demographic
           and socio-economic patterns. Evaluated across {data.totalRecords} total reported cases.
         </Typography>
@@ -137,9 +134,9 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
       {renderRiskBadge()}
 
       {/* Insights Panel */}
-      <Card sx={{ ...PremiumCardStyle, mb: 4, bgcolor: THEME.insightBg, border: 'none' }}>
+      <Card sx={{ ...PremiumCardStyle, mb: 4, bgcolor: isDark ? 'rgba(124, 58, 237, 0.15)' : '#EFF6FF', border: 'none' }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: THEME.insightText, mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? 'primary.light' : '#1E40AF', mb: 2 }}>
             Critical Risk Observations
           </Typography>
           {data.overallRiskSummary.length > 0 ? (
@@ -156,7 +153,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                       primary={
                         <Typography sx={{ 
                           fontWeight: isCritical ? 700 : 500,
-                          color: isCritical ? '#d32f2f' : THEME.textMain
+                          color: isCritical ? theme.palette.error.main : 'text.primary'
                         }}>
                           {summary}
                         </Typography>
@@ -180,8 +177,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <LocationIcon sx={{ color: THEME.primary, mr: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: THEME.dark }}>
+                <LocationIcon sx={{ color: primaryColor, mr: 1.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   High-Risk Districts
                 </Typography>
               </Box>
@@ -191,7 +188,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{d.name}</Typography>}
+                          primary={<Typography sx={{ fontWeight: 600, color: 'text.primary' }}>{d.name}</Typography>}
                           secondary={`${d.count} cases (${d.percentage}%)`}
                         />
                       </ListItem>
@@ -211,8 +208,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <PoliceIcon sx={{ color: THEME.primary, mr: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: THEME.dark }}>
+                <PoliceIcon sx={{ color: primaryColor, mr: 1.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   High-Workload Police Units
                 </Typography>
               </Box>
@@ -222,7 +219,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{u.name}</Typography>}
+                          primary={<Typography sx={{ fontWeight: 600, color: 'text.primary' }}>{u.name}</Typography>}
                           secondary={`${u.count} cases (${u.percentage}%)`}
                         />
                       </ListItem>
@@ -242,8 +239,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <WorkIcon sx={{ color: THEME.primary, mr: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: THEME.dark }}>
+                <WorkIcon sx={{ color: primaryColor, mr: 1.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   Occupation Vulnerabilities
                 </Typography>
               </Box>
@@ -253,7 +250,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{o.name}</Typography>} 
+                          primary={<Typography sx={{ fontWeight: 600, color: 'text.primary' }}>{o.name}</Typography>} 
                           secondary={`${o.count} victims/complainants (${o.percentage}%)`}
                         />
                       </ListItem>
@@ -273,8 +270,8 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
           <Card sx={{ ...PremiumCardStyle }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <CrimeIcon sx={{ color: THEME.primary, mr: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: THEME.dark }}>
+                <CrimeIcon sx={{ color: primaryColor, mr: 1.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   Crime Category Dominance
                 </Typography>
               </Box>
@@ -284,7 +281,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
                     <React.Fragment key={idx}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemText 
-                          primary={<Typography sx={{ fontWeight: 600, color: THEME.textMain }}>{c.name}</Typography>}
+                          primary={<Typography sx={{ fontWeight: 600, color: 'text.primary' }}>{c.name}</Typography>}
                           secondary={`${c.count} cases (${c.percentage}%)`}
                         />
                       </ListItem>

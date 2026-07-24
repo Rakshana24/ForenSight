@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Box, 
   Typography, 
@@ -29,12 +30,45 @@ import { intelligenceService, type GraphData, type CaseSummary } from '../../ser
 import NetworkGraph from '../../components/Intelligence/NetworkGraph';
 
 const Intelligence: React.FC = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   const [searchType, setSearchType] = useState('Case ID');
   const [searchValue, setSearchValue] = useState('');
   const [caseResults, setCaseResults] = useState<CaseSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<GraphData | null>(null);
+  const [isDefaultLoaded, setIsDefaultLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadDefaultGraph = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const defaultID = '53343000000052315';
+        const result = await intelligenceService.getRelationshipGraph(defaultID);
+        setData(result);
+        setSearchValue(defaultID);
+        setIsDefaultLoaded(true);
+      } catch (err) {
+        console.warn('Primary default ID fetch failed, trying fallback ID 1', err);
+        try {
+          const fallbackID = '1';
+          const result = await intelligenceService.getRelationshipGraph(fallbackID);
+          setData(result);
+          setSearchValue(fallbackID);
+          setIsDefaultLoaded(true);
+        } catch (innerErr) {
+          console.error('Fallback default ID fetch failed as well', innerErr);
+          setSearchValue('');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDefaultGraph();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +103,7 @@ const Intelligence: React.FC = () => {
     try {
       const result = await intelligenceService.getRelationshipGraph(id);
       setData(result);
+      setIsDefaultLoaded(true);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch relationship data.');
     } finally {
@@ -135,6 +170,12 @@ const Intelligence: React.FC = () => {
         </CardContent>
       </Card>
 
+      {isDefaultLoaded && (
+        <Alert severity="info" sx={{ mb: 4, borderRadius: 2 }}>
+          💡 <strong>System Note:</strong> Pre-loaded case <strong>Case ID {searchValue}</strong>. You can change the "Search By" category or type a new ID in the search input above to investigate any other entity.
+        </Alert>
+      )}
+
       {error && (
         <Alert severity="error" sx={{ mb: 4 }}>
           {error}
@@ -145,7 +186,7 @@ const Intelligence: React.FC = () => {
         <TableContainer component={Paper} sx={{ mb: 4 }}>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#f1f5f9' }}>
+              <TableRow sx={{ bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9' }}>
                 <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Crime Number</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Crime Date</TableCell>
@@ -302,9 +343,9 @@ const Intelligence: React.FC = () => {
           {/* Relationship Insights */}
           {data.relationshipInsights && (
             <Grid size={12}>
-              <Card sx={{ mt: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <Card sx={{ mt: 2, bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: '1px solid', borderColor: 'divider' }}>
                 <CardContent>
-                  <Typography variant="h5" gutterBottom color="primary.dark">
+                  <Typography variant="h5" gutterBottom color="text.primary">
                     Relationship Insights
                   </Typography>
                   <Divider sx={{ mb: 3 }} />
@@ -326,7 +367,7 @@ const Intelligence: React.FC = () => {
                           Repeat Offenders
                         </Typography>
                         {data.relationshipInsights.repeatOffenders.map((offender, idx) => (
-                          <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb' }}>
+                          <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                             <Typography variant="body2"><strong>Name:</strong> {offender.name}</Typography>
                             <Typography variant="body2"><strong>Total FIRs:</strong> {offender.totalFIRs}</Typography>
                             <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>Related Cases:</Typography>
@@ -347,7 +388,7 @@ const Intelligence: React.FC = () => {
                           Repeat Victims
                         </Typography>
                         {data.relationshipInsights.repeatVictims.map((victim, idx) => (
-                          <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb' }}>
+                          <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                             <Typography variant="body2"><strong>Name:</strong> {victim.name}</Typography>
                             <Typography variant="body2"><strong>Total FIRs:</strong> {victim.totalFIRs}</Typography>
                             <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>Related Cases:</Typography>
@@ -367,7 +408,7 @@ const Intelligence: React.FC = () => {
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'info.main' }} gutterBottom>
                           Other Cases by this Officer
                         </Typography>
-                        <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb', maxHeight: 200, overflowY: 'auto' }}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider', maxHeight: 200, overflowY: 'auto' }}>
                           {data.relationshipInsights.relatedOfficerCases.map((rc: any, idx: number) => (
                             <Typography key={idx} variant="body2" color="text.primary">
                               • Crime No: {rc.CrimeNo} (Case ID: {rc.CaseMasterID})
@@ -383,7 +424,7 @@ const Intelligence: React.FC = () => {
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'success.main' }} gutterBottom>
                           Other Cases in this Unit
                         </Typography>
-                        <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1, border: '1px solid #e5e7eb', maxHeight: 200, overflowY: 'auto' }}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider', maxHeight: 200, overflowY: 'auto' }}>
                           {data.relationshipInsights.relatedUnitCases.map((rc: any, idx: number) => (
                             <Typography key={idx} variant="body2" color="text.primary">
                               • Crime No: {rc.CrimeNo} (Case ID: {rc.CaseMasterID})
@@ -397,14 +438,13 @@ const Intelligence: React.FC = () => {
               </Card>
             </Grid>
           )}
-
           {/* Organized Crime Detection */}
           {data.organizedCrimeIndicators && (
             <Grid size={12}>
-              <Card sx={{ mt: 2, bgcolor: '#fef2f2', border: '1px solid #fca5a5' }}>
+              <Card sx={{ mt: 2, bgcolor: isDark ? 'rgba(211, 47, 47, 0.15)' : '#fef2f2', border: '1px solid', borderColor: isDark ? 'error.dark' : '#fca5a5' }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5" sx={{ color: 'error.dark', fontWeight: 'bold' }}>
+                    <Typography variant="h5" sx={{ color: isDark ? 'error.light' : 'error.dark', fontWeight: 'bold' }}>
                       Organized Crime Detection
                     </Typography>
                     <Chip 
@@ -416,7 +456,7 @@ const Intelligence: React.FC = () => {
                       sx={{ fontWeight: 'bold' }}
                     />
                   </Box>
-                  <Divider sx={{ mb: 2, borderColor: '#fca5a5' }} />
+                  <Divider sx={{ mb: 2, borderColor: isDark ? 'error.dark' : '#fca5a5' }} />
                   
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle2" gutterBottom color="text.secondary">
@@ -436,7 +476,7 @@ const Intelligence: React.FC = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }} gutterBottom>
                     Detection Indicators:
                   </Typography>
-                  <Alert severity="error" sx={{ bgcolor: 'white' }}>
+                  <Alert severity="error" sx={{ bgcolor: isDark ? 'rgba(0,0,0,0.2)' : 'white' }}>
                     {data.organizedCrimeIndicators.reasons.map((reason, idx) => (
                       <div key={idx} style={{ marginBottom: '8px' }}>• {reason}</div>
                     ))}
@@ -448,7 +488,7 @@ const Intelligence: React.FC = () => {
                         Co-Offender Syndicates
                       </Typography>
                       {data.organizedCrimeIndicators.coOffenders.map((co, idx) => (
-                        <Box key={idx} sx={{ p: 2, bgcolor: 'white', border: '1px solid #fca5a5', borderRadius: 1, mb: 1 }}>
+                        <Box key={idx} sx={{ p: 2, bgcolor: 'background.default', border: '1px solid', borderColor: isDark ? 'error.dark' : '#fca5a5', borderRadius: 1, mb: 1 }}>
                           <Typography variant="body2">
                             <strong>{co.offenderA}</strong> and <strong>{co.offenderB}</strong> share <strong>{co.sharedCases}</strong> other related FIRs.
                           </Typography>
@@ -464,9 +504,9 @@ const Intelligence: React.FC = () => {
           {/* Criminal Network Visualization */}
           {data.graph && data.graph.nodes.length > 0 && (
             <Grid size={12}>
-              <Card sx={{ mt: 2, height: 800, width: '100%', border: '1px solid #e2e8f0' }}>
+              <Card sx={{ mt: 2, height: 800, width: '100%', border: '1px solid', borderColor: 'divider' }}>
                 <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h5" gutterBottom color="primary.dark">
+                  <Typography variant="h5" gutterBottom color="text.primary">
                     Criminal Network Visualization
                   </Typography>
                   <Divider sx={{ mb: 2 }} />

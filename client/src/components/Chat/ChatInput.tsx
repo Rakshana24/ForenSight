@@ -36,7 +36,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onVoiceRecordin
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', p: 2, borderTop: '1px solid #e2e8f0', bgcolor: '#fff' }}>
+    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
       {/* Dynamic Language Selection Dropdown (Only visible during idle state) */}
       {recorderState === 'idle' && (
         <Select

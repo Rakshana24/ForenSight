@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -73,7 +74,38 @@ interface FilterOptions {
 }
 
 const AnalyticsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam !== null) {
+      const val = parseInt(tabParam, 10);
+      if (!isNaN(val) && val >= 0 && val <= 6) {
+        return val;
+      }
+    }
+    const state = location.state as { activeTab?: number } | null;
+    if (state && typeof state.activeTab === 'number') {
+      return state.activeTab;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam !== null) {
+      const val = parseInt(tabParam, 10);
+      if (!isNaN(val) && val >= 0 && val <= 6) {
+        setActiveTab(val);
+      }
+    } else {
+      const state = location.state as { activeTab?: number } | null;
+      if (state && typeof state.activeTab === 'number') {
+        setActiveTab(state.activeTab);
+      }
+    }
+  }, [location]);
 
   // Filters State
   const [filterOpts, setFilterOpts] = useState<FilterOptions | null>(null);
@@ -1464,68 +1496,73 @@ const AnalyticsPage: React.FC = () => {
           {/* Stats Summaries panels */}
           {trendData && trendData.totalRecords > 0 ? (
             <>
-              <Grid container spacing={2.5} sx={{ mb: 3.5 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        TOTAL CRIMES
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {trendData.stats.totalCrimes}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        AVG CRIMES
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {averageCrimesValue}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK MONTH
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
-                        {trendData.stats.highestMonth}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK DAY
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
-                        {trendData.stats.highestDay}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.8 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        TOP CRIME CATEGORY
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
-                        {trendData.stats.mostFrequentType}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(5, 1fr)'
+                  },
+                  gridAutoRows: '1fr',
+                  gap: '20px',
+                  width: '100%',
+                  mb: 3.5,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      TOTAL CRIMES
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {trendData.stats.totalCrimes}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      AVG CRIMES
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {averageCrimesValue}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK MONTH
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
+                      {trendData.stats.highestMonth}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK DAY
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                      {trendData.stats.highestDay}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      TOP CRIME CATEGORY
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                      {trendData.stats.mostFrequentType}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
 
               {/* Chart Panel */}
               <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
@@ -1802,80 +1839,83 @@ const AnalyticsPage: React.FC = () => {
           {!hotspotLoading && !hotspotError && hotspotData && hotspotData.totalRecords > 0 && (
             <>
               {/* Stats Summaries panels */}
-              <Grid container spacing={2} sx={{ mb: 3.5 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        TOTAL CRIMES
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {hotspotData.summary.totalCrimes}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        TOTAL HOTSPOTS
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {hotspotData.summary.totalHotspots}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        HIGHEST CRIME DISTRICT
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
-                        {hotspotData.summary.highestDistrict}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        HIGHEST CRIME STATION
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
-                        {hotspotData.summary.highestStation}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        HIGHEST CRIME LOCATION
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
-                        {hotspotData.summary.highestLocation}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        MOST COMMON CRIME TYPE
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
-                        {hotspotData.summary.mostCommonCrimeType}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(6, 1fr)'
+                  },
+                  gridAutoRows: '1fr',
+                  gap: '16px',
+                  width: '100%',
+                  mb: 3.5,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      TOTAL CRIMES
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {hotspotData.summary.totalCrimes}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      TOTAL HOTSPOTS
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {hotspotData.summary.totalHotspots}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      HIGHEST CRIME DISTRICT
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
+                      {hotspotData.summary.highestDistrict}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      HIGHEST CRIME STATION
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                      {hotspotData.summary.highestStation}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      HIGHEST CRIME LOCATION
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                      {hotspotData.summary.highestLocation}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      MOST COMMON CRIME TYPE
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                      {hotspotData.summary.mostCommonCrimeType}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
 
               {/* Controls Card */}
               <Card sx={{ mb: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
@@ -2183,88 +2223,99 @@ const AnalyticsPage: React.FC = () => {
           {!clusterLoading && !clusterError && clusterData && clusterData.totalRecords > 0 && (
             <>
               {/* Summary Metric Cards */}
-              <Grid container spacing={2} sx={{ mb: 3.5 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        ACTIVE CLUSTERS
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {clusterData.summary.clusterCount}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 1.6 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        AVERAGE GROWTH
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        +{clusterData.summary.avgGrowth}%
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        HIGHEST GROWTH DISTRICT
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
-                        {clusterData.summary.highestGrowthDistrict}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        HIGHEST GROWTH STATION
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
-                        {clusterData.summary.highestGrowthStation}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        LARGEST CRIME INCREASE
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
-                        {clusterData.summary.largestCrimeIncrease}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        FASTEST GROWING CRIME TYPE
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
-                        {clusterData.summary.fastestGrowingCrimeType}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(6, 1fr)'
+                  },
+                  gridAutoRows: '1fr',
+                  gap: '16px',
+                  width: '100%',
+                  mb: 3.5,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      ACTIVE CLUSTERS
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {clusterData.summary.clusterCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      AVERAGE GROWTH
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      +{clusterData.summary.avgGrowth}%
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      HIGHEST GROWTH DISTRICT
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.8, wordBreak: 'break-all' }}>
+                      {clusterData.summary.highestGrowthDistrict}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      HIGHEST GROWTH STATION
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                      {clusterData.summary.highestGrowthStation}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      LARGEST CRIME INCREASE
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 1, wordBreak: 'break-all' }}>
+                      {clusterData.summary.largestCrimeIncrease}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      FASTEST GROWING CRIME TYPE
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                      {clusterData.summary.fastestGrowingCrimeType}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
 
               {/* Insights Card */}
-              <Card sx={{ mb: 3.5, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF', boxShadow: 'none' }}>
+              <Card 
+                sx={{ 
+                  mb: 3.5, 
+                  border: '1px solid',
+                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : '#DBEAFE',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : '#EFF6FF',
+                  boxShadow: 'none' 
+                }}
+              >
                 <CardContent sx={{ p: 2.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TrendingUpIcon fontSize="small" /> Automated Cluster Intelligence & Insights
                   </Typography>
-                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#1E3A8A', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
+                  <ul style={{ margin: 0, paddingLeft: '20px', color: 'text.primary', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
                     {clusterData.insights.map((insight: string, idx: number) => (
                       <li key={idx} style={{ marginBottom: idx === clusterData.insights.length - 1 ? 0 : '6px' }}>{insight}</li>
                     ))}
@@ -2581,88 +2632,99 @@ const AnalyticsPage: React.FC = () => {
           {!seasonalLoading && !seasonalError && seasonalData && seasonalData.totalRecords > 0 && (
             <>
               {/* Summary Metric Cards */}
-              <Grid container spacing={2} sx={{ mb: 3.5 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK SEASON
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {seasonalData.summary.highestCrimeSeason}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        LOWEST SEASON
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {seasonalData.summary.lowestCrimeSeason}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK MONTH
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
-                        {seasonalData.summary.highestCrimeMonth}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK WEEKDAY
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
-                        {seasonalData.summary.highestCrimeWeekday}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        WEEKEND CRIMES
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
-                        {seasonalData.summary.highestCrimeWeekendCount}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-                  <Card sx={{ bgcolor: '#ffffff', minHeight: 90 }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
-                        PEAK SEASON CRIME
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
-                        {seasonalData.summary.mostCommonSeasonalCrimeType}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(6, 1fr)'
+                  },
+                  gridAutoRows: '1fr',
+                  gap: '16px',
+                  width: '100%',
+                  mb: 3.5,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK SEASON
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {seasonalData.summary.highestCrimeSeason}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      LOWEST SEASON
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {seasonalData.summary.lowestCrimeSeason}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK MONTH
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 0.5 }}>
+                      {seasonalData.summary.highestCrimeMonth}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK WEEKDAY
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
+                      {seasonalData.summary.highestCrimeWeekday}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      WEEKEND CRIMES
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
+                      {seasonalData.summary.highestCrimeWeekendCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ width: '100%', height: '100%', bgcolor: 'background.paper', boxSizing: 'border-box', border: '1px solid', borderColor: 'divider', transition: 'background-color 0.3s ease, border-color 0.3s ease' }}>
+                  <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', '&:last-child': { pb: 2 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 'bold' }}>
+                      PEAK SEASON CRIME
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5, lineHeight: 1.2 }}>
+                      {seasonalData.summary.mostCommonSeasonalCrimeType}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
 
               {/* Insights Card */}
-              <Card sx={{ mb: 3.5, border: '1px solid #DBEAFE', bgcolor: '#EFF6FF', boxShadow: 'none' }}>
+              <Card 
+                sx={{ 
+                  mb: 3.5, 
+                  border: '1px solid',
+                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : '#DBEAFE',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : '#EFF6FF',
+                  boxShadow: 'none' 
+                }}
+              >
                 <CardContent sx={{ p: 2.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1E40AF', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TrendingUpIcon fontSize="small" /> Automated Seasonal Intelligence & Insights
                   </Typography>
-                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#1E3A8A', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
+                  <ul style={{ margin: 0, paddingLeft: '20px', color: 'text.primary', fontSize: '13.5px', fontFamily: 'inherit', lineHeight: 1.6 }}>
                     {seasonalData.insights.map((insight: string, idx: number) => (
                       <li key={idx} style={{ marginBottom: idx === seasonalData.insights.length - 1 ? 0 : '6px' }}>{insight}</li>
                     ))}
