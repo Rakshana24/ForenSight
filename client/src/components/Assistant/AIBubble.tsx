@@ -26,7 +26,7 @@ const AIBubble: React.FC = () => {
     <Box
       sx={{
         position: 'fixed',
-        bottom: 24,
+        bottom: 96,
         right: 24,
         zIndex: 1500,
         display: 'flex',
