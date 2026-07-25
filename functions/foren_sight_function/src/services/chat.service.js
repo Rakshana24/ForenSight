@@ -699,17 +699,77 @@ class ChatService {
 
     let apiResponse;
     try {
-      const response = await fetch(targetUrl);
-      apiResponse = await response.json();
-      
-      if (!response.ok || apiResponse.error) {
-        const errorMsg = apiResponse.error || `HTTP error! status: ${response.status}`;
-        console.warn(`[ChatService] Target API returned error: ${errorMsg}`);
-        apiResponse = { error: errorMsg };
+      const catalyst = require('zcatalyst-sdk-node');
+      const app = catalyst.initialize(req);
+      const zcql = app.zcql();
+
+      if (apiPath === '/fir') {
+        const CaseService = require('./case.service');
+        const caseService = new CaseService(zcql);
+        const { crimeNo, caseNo, caseID, caseMasterId } = parameters || {};
+        const finalCaseID = caseID || caseMasterId || (parameters && parameters.caseMasterId);
+        
+        const caseData = await caseService.getCaseDetails({
+          caseID: finalCaseID,
+          crimeNumber: crimeNo,
+          firNumber: caseNo
+        });
+        apiResponse = { status: 'success', data: caseData };
+      } else if (apiPath === '/criminal') {
+        const AccusedService = require('./accused.service');
+        const accusedService = new AccusedService(zcql);
+        const { criminalName, accusedAId, accusedID, caseID } = parameters || {};
+        const finalAccusedID = accusedID || accusedAId;
+        
+        const accusedData = await accusedService.getAccusedDetails({
+          accusedID: finalAccusedID,
+          accusedName: criminalName,
+          caseID
+        });
+        apiResponse = { status: 'success', data: accusedData };
+      } else if (apiPath === '/victim') {
+        const VictimService = require('./victim.service');
+        const victimService = new VictimService(zcql);
+        const { victimName, victimID, caseID } = parameters || {};
+        
+        const victimData = await victimService.getVictimDetails({
+          victimID,
+          victimName,
+          caseID
+        });
+        apiResponse = { status: 'success', data: victimData };
+      } else if (apiPath === '/officer') {
+        const { officerName, badgeNumber, officerID } = parameters || {};
+        
+        let conditions = [];
+        if (officerID) {
+          conditions.push(`EmployeeID = '${officerID.toString().replace(/'/g, "''")}'`);
+        }
+        if (badgeNumber) {
+          conditions.push(`KGID = '${badgeNumber.toString().replace(/'/g, "''")}'`);
+        }
+        if (officerName) {
+          conditions.push(`FirstName = '${officerName.toString().replace(/'/g, "''")}'`);
+        }
+        
+        const whereClause = conditions.join(' AND ');
+        const query = `SELECT * FROM Employee WHERE ${whereClause}`;
+        const result = await zcql.executeZCQLQuery(query);
+        
+        if (!result || result.length === 0) {
+          const err = new Error('Officer not found.');
+          err.statusCode = 404;
+          throw err;
+        }
+        
+        const officers = result.map(row => row.Employee);
+        apiResponse = { status: 'success', data: officers };
+      } else {
+        apiResponse = { error: 'Unknown API path' };
       }
-    } catch (fetchError) {
-      console.error(`[ChatService] Fetch error calling target API:`, fetchError.message || fetchError);
-      return `Failed to connect to the internal database API. Please ensure the local server is running.`;
+    } catch (dbError) {
+      console.error(`[ChatService] Database query error for ${apiPath}:`, dbError.message || dbError);
+      apiResponse = { error: dbError.message || 'Database query error' };
     }
 
     // Resolve case details if victim search was performed to get business CaseMasterID

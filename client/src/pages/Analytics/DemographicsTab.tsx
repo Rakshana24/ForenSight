@@ -18,8 +18,6 @@ import {
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
-  Search as SearchIcon,
-  PieChart as ChartIcon,
   ClearAll as ClearIcon
 } from '@mui/icons-material';
 import {
@@ -49,7 +47,7 @@ interface DemographicsTabProps {
   filterOpts: FilterOptions | null;
 }
 
-const CHART_COLORS = ['#7C3AED', '#5B21B6', '#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+const CHART_COLORS = ['#1E3A8A', '#172554', '#075985', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
 
 const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
   const theme = useTheme();
@@ -58,7 +56,6 @@ const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
   const primaryColor = theme.palette.primary.main;
   const secondaryColor = theme.palette.primary.light;
   const darkColor = theme.palette.primary.dark;
-  const lavenderColor = isDark ? 'rgba(124, 58, 237, 0.15)' : '#E0E7FF';
 
   const PremiumCardStyle = {
     borderRadius: '16px',
@@ -69,7 +66,7 @@ const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
     transition: 'transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out, background-color 0.3s ease, border-color 0.3s ease',
     boxShadow: isDark 
       ? '0 4px 20px rgba(0, 0, 0, 0.2)' 
-      : '0 4px 14px rgba(109, 40, 217, 0.04), 0 2px 6px rgba(109, 40, 217, 0.02)',
+      : '0 4px 14px rgba(3, 105, 161, 0.04), 0 2px 6px rgba(3, 105, 161, 0.02)',
     border: '1px solid',
     borderColor: 'divider',
     backgroundColor: 'background.paper',
@@ -77,27 +74,11 @@ const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
       transform: 'translateY(-4px)',
       boxShadow: isDark 
         ? '0 12px 28px rgba(0, 0, 0, 0.3)' 
-        : '0 12px 24px rgba(109, 40, 217, 0.08), 0 4px 8px rgba(109, 40, 217, 0.04)'
+        : '0 12px 24px rgba(3, 105, 161, 0.08), 0 4px 8px rgba(3, 105, 161, 0.04)'
     }
   };
 
-  const InputStyle = {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '10px',
-      backgroundColor: 'background.paper',
-      transition: 'all 0.2s',
-      '&:hover fieldset': {
-        borderColor: 'primary.light',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: 'primary.main',
-        borderWidth: '2px'
-      }
-    },
-    '& .MuiInputLabel-root.Mui-focused': {
-      color: 'primary.main'
-    }
-  };
+
 
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedStation, setSelectedStation] = useState('');
@@ -211,7 +192,7 @@ const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
             axisLine={{ stroke: theme.palette.divider }}
             tickLine={false}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(109, 40, 217, 0.04)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(3, 105, 161, 0.04)' }} />
           <Bar dataKey={yKey} fill={color} radius={[6, 6, 0, 0]} barSize={45} isAnimationActive={true} animationDuration={1000} />
         </BarChart>
       </ResponsiveContainer>
@@ -243,7 +224,7 @@ const DemographicsTab: React.FC<DemographicsTabProps> = ({ filterOpts }) => {
               axisLine={{ stroke: theme.palette.divider }}
               tickLine={false}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(109, 40, 217, 0.04)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(3, 105, 161, 0.04)' }} />
             <Bar dataKey="count" fill={color} radius={[0, 6, 6, 0]} barSize={32} isAnimationActive={true} animationDuration={1000} />
           </BarChart>
         </ResponsiveContainer>

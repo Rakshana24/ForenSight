@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Button, Divider, CircularProgress, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Divider, CircularProgress, IconButton, Tooltip, Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -128,7 +128,7 @@ const Chat: React.FC = () => {
                 <Box sx={{
                   width: 44,
                   height: 52,
-                  bgcolor: isDark ? 'rgba(124, 58, 237, 0.15)' : '#ECE9FC',
+                  bgcolor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#DBEAFE',
                   border: '2px solid',
                   borderColor: 'primary.main',
                   borderRadius: '6px',
@@ -174,8 +174,8 @@ const Chat: React.FC = () => {
                     height: 22,
                     px: 1.2,
                     borderRadius: '11px',
-                    bgcolor: isDark ? 'rgba(124, 58, 237, 0.18)' : '#ECE9FC',
-                    color: isDark ? '#C084FC' : '#7C3AED',
+                    bgcolor: isDark ? 'rgba(56, 189, 248, 0.18)' : '#DBEAFE',
+                    color: isDark ? '#7DD3FC' : '#1E3A8A',
                     fontSize: '0.7rem',
                     fontWeight: 'bold'
                   }}>
@@ -237,7 +237,7 @@ const Chat: React.FC = () => {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: loading ? 'none' : 'scale(1.04)',
-                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(124,58,237,0.1)',
+                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(2,132,199,0.1)',
                     }
                   }}
                 >
@@ -245,8 +245,8 @@ const Chat: React.FC = () => {
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    bgcolor: isDark ? 'rgba(124, 58, 237, 0.18)' : '#ECE9FC',
-                    color: isDark ? '#A78BFA' : '#7C3AED',
+                    bgcolor: isDark ? 'rgba(56, 189, 248, 0.18)' : '#DBEAFE',
+                    color: isDark ? '#7DD3FC' : '#1E3A8A',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -279,7 +279,7 @@ const Chat: React.FC = () => {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: loading ? 'none' : 'scale(1.04)',
-                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(124,58,237,0.1)',
+                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(2,132,199,0.1)',
                     }
                   }}
                 >
@@ -321,7 +321,7 @@ const Chat: React.FC = () => {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: loading ? 'none' : 'scale(1.04)',
-                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(124,58,237,0.1)',
+                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(2,132,199,0.1)',
                     }
                   }}
                 >
@@ -363,7 +363,7 @@ const Chat: React.FC = () => {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: loading ? 'none' : 'scale(1.04)',
-                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(124,58,237,0.1)',
+                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(2,132,199,0.1)',
                     }
                   }}
                 >
@@ -405,7 +405,7 @@ const Chat: React.FC = () => {
                     '&:hover': {
                       borderColor: 'primary.main',
                       transform: loading ? 'none' : 'scale(1.04)',
-                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(124,58,237,0.1)',
+                      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(2,132,199,0.1)',
                     }
                   }}
                 >
@@ -456,9 +456,9 @@ const Chat: React.FC = () => {
                       size="small"
                       sx={{
                         p: 0.5,
-                        color: isDark ? '#A78BFA' : '#7C3AED',
+                        color: isDark ? '#7DD3FC' : '#1E3A8A',
                         '&:hover': {
-                          bgcolor: isDark ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.06)',
+                          bgcolor: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(2, 132, 199, 0.06)',
                         }
                       }}
                     >
@@ -494,18 +494,85 @@ const Chat: React.FC = () => {
 
           {/* 2. Messages Pane */}
           <Box sx={{ flex: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', bgcolor: 'background.default', transition: 'background-color 0.3s ease' }}>
-            {currentConversation.messages.map((msg, index) => {
-              const prevMsg = index > 0 ? currentConversation.messages[index - 1] : null;
-              const originalPrompt = prevMsg && prevMsg.role === 'User' ? prevMsg.message : '';
-              return (
-                <ChatBubble
-                  key={msg.messageId}
-                  msg={msg}
-                  originalPrompt={originalPrompt}
-                  audioCacheRef={audioCacheRef}
-                />
-              );
-            })}
+            {currentConversation.messages.length === 0 ? (
+              <Box sx={{ m: 'auto', maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 3.5, py: 4 }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 850, mb: 1, color: 'text.primary', fontSize: '1.4rem', letterSpacing: '-0.3px' }}>
+                    Start Your Investigation
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    Select a suggested analysis or type a custom query below to query the crime records database.
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2}>
+                  {[
+                    {
+                      category: 'Reports & Assessments',
+                      questions: [
+                        { label: 'Generate Case Summary Report', text: 'Generate AI Case Summary' },
+                        { label: 'Generate Investigation Timeline', text: 'Generate Investigation Timeline' },
+                        { label: 'Perform Case Quality Assessment', text: 'Generate AI Investigation Assessment' },
+                      ]
+                    },
+                    {
+                      category: 'Database Intelligence Search',
+                      questions: [
+                        { label: 'Look up details of Case ID 100', text: 'Details about case id 100' },
+                        { label: 'Look up accused Somashekar Rao', text: 'Show details of accused named Somashekar Rao' },
+                        { label: 'Identify similar cases in database', text: 'Find Similar Cases' },
+                        { label: 'Recommend next investigation leads', text: 'Recommend Investigation Leads' }
+                      ]
+                    }
+                  ].map((group, gIdx) => (
+                    <Grid size={{ xs: 12, md: 6 }} key={gIdx}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', display: 'block', mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.8px', fontSize: '0.7rem' }}>
+                        {group.category}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                        {group.questions.map((q, qIdx) => (
+                          <Box
+                            key={qIdx}
+                            onClick={() => sendChatMessage(q.text)}
+                            sx={{
+                              p: 2,
+                              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.04)' : 'rgba(2, 132, 199, 0.02)',
+                                transform: 'translateY(-1px)'
+                              }
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.8rem' }}>
+                              {q.label}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            ) : (
+              currentConversation.messages.map((msg, index) => {
+                const prevMsg = index > 0 ? currentConversation.messages[index - 1] : null;
+                const originalPrompt = prevMsg && prevMsg.role === 'User' ? prevMsg.message : '';
+                return (
+                  <ChatBubble
+                    key={msg.messageId}
+                    msg={msg}
+                    originalPrompt={originalPrompt}
+                    audioCacheRef={audioCacheRef}
+                  />
+                );
+              })
+            )}
 
             {/* Assistant typing indicator */}
             {loading && (

@@ -19,9 +19,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import {
   FilterList as FilterIcon,
-  Search as SearchIcon,
   Lightbulb as InsightsIcon,
-  Public as SocioIcon,
   ClearAll as ClearIcon
 } from '@mui/icons-material';
 import {
@@ -49,7 +47,7 @@ interface SocioEconomicTabProps {
   filterOpts: FilterOptions | null;
 }
 
-const CHART_COLORS = ['#7C3AED', '#5B21B6', '#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+const CHART_COLORS = ['#1E3A8A', '#172554', '#075985', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
 
 const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
   const theme = useTheme();
@@ -58,7 +56,6 @@ const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
   const primaryColor = theme.palette.primary.main;
   const secondaryColor = theme.palette.primary.light;
   const darkColor = theme.palette.primary.dark;
-  const lavenderColor = isDark ? 'rgba(124, 58, 237, 0.15)' : '#E0E7FF';
 
   const PremiumCardStyle = {
     borderRadius: '16px',
@@ -69,7 +66,7 @@ const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
     transition: 'transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out, background-color 0.3s ease, border-color 0.3s ease',
     boxShadow: isDark 
       ? '0 4px 20px rgba(0, 0, 0, 0.2)' 
-      : '0 4px 14px rgba(109, 40, 217, 0.04), 0 2px 6px rgba(109, 40, 217, 0.02)',
+      : '0 4px 14px rgba(3, 105, 161, 0.04), 0 2px 6px rgba(3, 105, 161, 0.02)',
     border: '1px solid',
     borderColor: 'divider',
     backgroundColor: 'background.paper',
@@ -77,27 +74,11 @@ const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
       transform: 'translateY(-4px)',
       boxShadow: isDark 
         ? '0 12px 28px rgba(0, 0, 0, 0.3)' 
-        : '0 12px 24px rgba(109, 40, 217, 0.08), 0 4px 8px rgba(109, 40, 217, 0.04)'
+        : '0 12px 24px rgba(3, 105, 161, 0.08), 0 4px 8px rgba(3, 105, 161, 0.04)'
     }
   };
 
-  const InputStyle = {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '10px',
-      backgroundColor: 'background.paper',
-      transition: 'all 0.2s',
-      '&:hover fieldset': {
-        borderColor: 'primary.light',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: 'primary.main',
-        borderWidth: '2px'
-      }
-    },
-    '& .MuiInputLabel-root.Mui-focused': {
-      color: 'primary.main'
-    }
-  };
+
 
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedStation, setSelectedStation] = useState('');
@@ -204,7 +185,7 @@ const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
               axisLine={{ stroke: theme.palette.divider }}
               tickLine={false}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(109, 40, 217, 0.04)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(3, 105, 161, 0.04)' }} />
             <Bar dataKey="count" fill={color} radius={[0, 6, 6, 0]} barSize={32} isAnimationActive={true} animationDuration={1000} />
           </BarChart>
         </ResponsiveContainer>
@@ -454,7 +435,7 @@ const SocioEconomicTab: React.FC<SocioEconomicTabProps> = ({ filterOpts }) => {
                 <Grid container spacing={3}>
                   {data.insights.map((insight: string, idx: number) => (
                     <Grid size={{ xs: 12, md: 6, xl: 3 }} key={idx}>
-                      <Card sx={{ ...PremiumCardStyle, minHeight: 'auto', bgcolor: isDark ? 'rgba(124, 58, 237, 0.15)' : '#EFF6FF', border: 'none', boxShadow: '0 4px 12px rgba(109, 40, 217, 0.06)' }}>
+                      <Card sx={{ ...PremiumCardStyle, minHeight: 'auto', bgcolor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#EFF6FF', border: 'none', boxShadow: '0 4px 12px rgba(3, 105, 161, 0.06)' }}>
                         <CardContent sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                           <InsightsIcon sx={{ color: isDark ? 'primary.light' : '#1E40AF', fontSize: 28, mt: 0.5 }} />
                           <Typography variant="body1" sx={{ color: isDark ? 'primary.light' : '#1E40AF', fontWeight: 600, lineHeight: 1.6 }}>

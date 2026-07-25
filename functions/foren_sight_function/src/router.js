@@ -1,5 +1,6 @@
 'use strict';
 
+const catalyst = require('zcatalyst-sdk-node');
 const { sendError } = require('./utils/response');
 const healthHandler = require('./routes/health.route');
 const officerHandler = require('./routes/officer.route');
@@ -94,7 +95,23 @@ async function dispatch(req, res) {
   }
 
   if (handler) {
-    await handler(req, res);
+    if (parsedUrl === '/health') {
+      await handler(req, res);
+      return;
+    }
+
+    try {
+      req._useUserScope = true;
+      const app = catalyst.initialize(req);
+      await app.userManagement().getCurrentUser();
+      req._useUserScope = false;
+      
+      // User is verified, proceed with request
+      await handler(req, res);
+    } catch (err) {
+      console.error('API request auth validation failed:', err.message || err);
+      sendError(res, 401, 'Unauthorized');
+    }
   } else {
     sendError(res, 404, 'Route not found');
   }

@@ -41,9 +41,6 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
   const isDark = theme.palette.mode === 'dark';
 
   const primaryColor = theme.palette.primary.main;
-  const secondaryColor = theme.palette.primary.light;
-  const darkColor = theme.palette.primary.dark;
-  const lavenderColor = isDark ? 'rgba(124, 58, 237, 0.15)' : '#E0E7FF';
 
   const PremiumCardStyle = {
     borderRadius: '16px',
@@ -134,7 +131,7 @@ export default function SocialRiskTab({ filterOpts }: SocialRiskTabProps) {
       {renderRiskBadge()}
 
       {/* Insights Panel */}
-      <Card sx={{ ...PremiumCardStyle, mb: 4, bgcolor: isDark ? 'rgba(124, 58, 237, 0.15)' : '#EFF6FF', border: 'none' }}>
+      <Card sx={{ ...PremiumCardStyle, mb: 4, bgcolor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#EFF6FF', border: 'none' }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? 'primary.light' : '#1E40AF', mb: 2 }}>
             Critical Risk Observations

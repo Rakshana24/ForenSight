@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Conversation, Message } from '../types';
 import { conversationService } from '../services/conversationService';
 import { chatService } from '../services/chatService';
+import { useAuth } from './AuthContext';
 
 export interface ChatContextType {
   sessionId: string;
@@ -23,9 +24,8 @@ export interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [sessionId, setSessionState] = useState<string>(() => {
-    return localStorage.getItem('sessionId') || 'session-alice';
-  });
+  const { user } = useAuth();
+  const [sessionId, setSessionState] = useState<string>('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<(Conversation & { messages: Message[] }) | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -35,17 +35,34 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanId = id.trim();
     if (cleanId) {
       setSessionState(cleanId);
-      localStorage.setItem('sessionId', cleanId);
+      if (user) {
+        localStorage.setItem(`sessionId_${user.user_id}`, cleanId);
+      }
     }
   };
 
+  // Sync session ID with logged in user
+  useEffect(() => {
+    if (user) {
+      const persisted = localStorage.getItem(`sessionId_${user.user_id}`);
+      setSessionState(persisted || user.user_id);
+    } else {
+      setSessionState('');
+    }
+  }, [user]);
+
   // Reload conversations when session ID changes
   useEffect(() => {
-    loadConversations();
+    if (user && sessionId) {
+      loadConversations();
+    } else {
+      setConversations([]);
+    }
     setCurrentConversation(null);
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   const loadConversations = async () => {
+    if (!sessionId) return;
     setLoading(true);
     setError(null);
     try {

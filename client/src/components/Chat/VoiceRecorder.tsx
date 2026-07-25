@@ -216,6 +216,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       console.log('[VoiceRecorder] Sending WAV audio for Zia STT in language:', language);
       const res = await fetch('/server/foren_sight_function/voice/transcribe', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },

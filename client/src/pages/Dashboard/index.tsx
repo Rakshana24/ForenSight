@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  Grid,
-  IconButton,
   Tooltip,
-  Divider,
-  Button
+  Divider
 } from '@mui/material';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -21,7 +18,6 @@ import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import PieChartIcon from '@mui/icons-material/PieChart';
 import PublicIcon from '@mui/icons-material/Public';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import LocalPoliceIcon from '@mui/icons-material/LocalPolice';
 import { useChat } from '../../contexts/ChatContext';
 
@@ -69,9 +65,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { conversations, sessionId } = useChat();
 
-  const handleOpenConvo = (id: string) => {
-    navigate(`/chat/${id}`);
-  };
+
 
   const handleShortcutClick = (tabIndex: number) => {
     navigate(`/analytics?tab=${tabIndex}`, { state: { activeTab: tabIndex } });
@@ -154,7 +148,7 @@ const Dashboard: React.FC = () => {
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               transform: 'translateY(-4px)',
-              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.08)',
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 24px rgba(56, 189, 248, 0.08)' : '0 8px 24px rgba(2, 132, 199, 0.08)',
               borderColor: 'primary.main',
             }
           }}
@@ -189,7 +183,7 @@ const Dashboard: React.FC = () => {
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               transform: 'translateY(-4px)',
-              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.08)',
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 24px rgba(56, 189, 248, 0.08)' : '0 8px 24px rgba(2, 132, 199, 0.08)',
               borderColor: 'primary.main',
             }
           }}
@@ -224,7 +218,7 @@ const Dashboard: React.FC = () => {
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               transform: 'translateY(-4px)',
-              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.08)',
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 24px rgba(56, 189, 248, 0.08)' : '0 8px 24px rgba(2, 132, 199, 0.08)',
               borderColor: 'primary.main',
             }
           }}
@@ -269,7 +263,7 @@ const Dashboard: React.FC = () => {
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               transform: 'translateY(-4px)',
-              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.08)',
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 24px rgba(56, 189, 248, 0.08)' : '0 8px 24px rgba(2, 132, 199, 0.08)',
               borderColor: 'primary.main',
             }
           }}
@@ -336,7 +330,7 @@ const Dashboard: React.FC = () => {
                   transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                   '&:hover': {
                     transform: 'translateY(-5px)',
-                    boxShadow: '0 12px 28px rgba(124, 58, 237, 0.12)',
+                    boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 12px 28px rgba(56, 189, 248, 0.12)' : '0 12px 28px rgba(2, 132, 199, 0.12)',
                     borderColor: 'primary.main',
                     '& .arrow-icon': {
                       transform: 'translateX(4px)',

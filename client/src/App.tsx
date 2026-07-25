@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, useParams, useNavigate } from 'rea
 import { ThemeProvider, createTheme, CssBaseline, Box, Typography } from '@mui/material';
 import { ChatProvider, useChat } from './contexts/ChatContext';
 import { AppThemeProvider, useAppTheme } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 import ChatHeader from './components/Layout/ChatHeader';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -24,9 +25,9 @@ const MUIThemeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) 
           paper: themeMode === 'dark' ? '#181824' : '#FFFFFF',
         },
         primary: {
-          main: '#7C3AED', // Dynamic brand purple in both themes!
-          dark: '#6D28D9',
-          light: '#A78BFA',
+          main: themeMode === 'dark' ? '#38BDF8' : '#1E3A8A',
+          dark: themeMode === 'dark' ? '#0284C7' : '#172554',
+          light: themeMode === 'dark' ? '#7DD3FC' : '#DBEAFE',
         },
         text: {
           primary: themeMode === 'dark' ? '#F3F4F6' : '#1F2937',
@@ -105,7 +106,7 @@ const ChatRouteWrapper: React.FC = () => {
     if (conversationId) {
       // Validate that the conversation exists in the loaded list
       const exists = conversations.some(c => c.conversationId === conversationId);
-      if (!loading && conversations.length > 0 && !exists) {
+      if (!loading && !exists) {
         navigate('/', { replace: true });
         return;
       }
@@ -198,7 +199,7 @@ const MainLayout: React.FC = () => {
             letterSpacing: 1.2,
             textTransform: 'uppercase',
             zIndex: 2,
-            boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)'
+            boxShadow: themeMode === 'dark' ? '0 2px 6px rgba(56, 189, 248, 0.25)' : '0 2px 6px rgba(2, 132, 199, 0.25)'
           }}
         >
           Bulletins
@@ -293,9 +294,11 @@ const App: React.FC = () => {
     <AppThemeProvider>
       <MUIThemeWrapper>
         <Router>
-          <ChatProvider>
-            <MainLayout />
-          </ChatProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <MainLayout />
+            </ChatProvider>
+          </AuthProvider>
         </Router>
       </MUIThemeWrapper>
     </AppThemeProvider>

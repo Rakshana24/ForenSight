@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Box, Button, List, Divider, TextField, Typography, InputAdornment, ListItemButton, ListItemText, Avatar, IconButton, Tooltip } from '@mui/material';
+import { Box, Button, List, TextField, Typography, InputAdornment, ListItemButton, ListItemText, Avatar, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ForumIcon from '@mui/icons-material/Forum';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import HomeIcon from '@mui/icons-material/Home';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useChat } from '../../contexts/ChatContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -19,6 +19,7 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const { user, logout } = useAuth();
 
   const {
     conversations,
@@ -34,6 +35,11 @@ const Sidebar: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionInput, setSessionInput] = useState(sessionId);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Sync settings input field when active sessionId changes
+  React.useEffect(() => {
+    setSessionInput(sessionId);
+  }, [sessionId]);
 
   const handleStartNew = async () => {
     try {
@@ -157,10 +163,12 @@ const Sidebar: React.FC = () => {
                   mb: 0.5,
                   py: 0.6,
                   px: 1.5,
-                  bgcolor: isActive ? 'rgba(124, 58, 237, 0.06)' : 'transparent',
+                  bgcolor: isActive 
+                    ? ((theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.06)') 
+                    : 'transparent',
                   '&.Mui-selected': {
-                    bgcolor: 'rgba(124, 58, 237, 0.06)',
-                    '&:hover': { bgcolor: 'rgba(124, 58, 237, 0.09)' }
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.06)',
+                    '&:hover': { bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(2, 132, 199, 0.09)' }
                   },
                   '&:hover': {
                     bgcolor: 'action.hover',
@@ -517,13 +525,15 @@ const Sidebar: React.FC = () => {
               py: 0.5,
               px: 1,
               borderRadius: '8px',
+              minWidth: 0,
+              flex: 1,
               transition: 'background-color 0.2s ease',
               '&:hover': {
                 bgcolor: 'action.hover',
               }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1, mr: 1 }}>
               <Avatar 
                 sx={{ 
                   width: 32, 
@@ -533,33 +543,68 @@ const Sidebar: React.FC = () => {
                   bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
                   color: 'text.primary',
                   border: '1px solid',
-                  borderColor: 'divider'
+                  borderColor: 'divider',
+                  flexShrink: 0
                 }}
               >
-                A
+                {user ? user.first_name[0].toUpperCase() : 'A'}
               </Avatar>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', lineHeight: 1.2 }}>
-                  Alice
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: 'text.primary', 
+                    fontSize: '0.85rem', 
+                    lineHeight: 1.2,
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {user ? `${user.first_name} ${user.last_name}` : 'Officer'}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1 }}>
-                    Workspace Active
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25, minWidth: 0 }}>
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary" 
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      lineHeight: 1,
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                      flex: 1
+                    }}
+                  >
+                    {user ? user.email_id : 'Workspace Active'}
                   </Typography>
-                  <Box sx={{ width: 6, height: 6, bgcolor: '#10B981', borderRadius: '50%', boxShadow: '0 0 4px #10B981' }} />
+                  <Box sx={{ width: 6, height: 6, bgcolor: '#10B981', borderRadius: '50%', boxShadow: '0 0 4px #10B981', flexShrink: 0 }} />
                 </Box>
               </Box>
             </Box>
 
-            <Tooltip title="Configure Session" arrow>
-              <IconButton 
-                size="small" 
-                onClick={() => setShowSettings(true)}
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-              >
-                <SettingsIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Tooltip title="Configure Session" arrow>
+                <IconButton 
+                  size="small" 
+                  onClick={() => setShowSettings(true)}
+                  sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Log Out" arrow>
+                <IconButton 
+                  size="small" 
+                  onClick={logout}
+                  sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                >
+                  <LogoutIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
         )}
       </Box>

@@ -2307,7 +2307,7 @@ const AnalyticsPage: React.FC = () => {
                   mb: 3.5, 
                   border: '1px solid',
                   borderColor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : '#DBEAFE',
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : '#EFF6FF',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#EFF6FF',
                   boxShadow: 'none' 
                 }}
               >
@@ -2716,7 +2716,7 @@ const AnalyticsPage: React.FC = () => {
                   mb: 3.5, 
                   border: '1px solid',
                   borderColor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : '#DBEAFE',
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : '#EFF6FF',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#EFF6FF',
                   boxShadow: 'none' 
                 }}
               >

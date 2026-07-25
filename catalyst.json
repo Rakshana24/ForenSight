@@ -1,4 +1,8 @@
 {
+  "client": {
+    "source": "client/dist",
+    "ignore": []
+  },
   "functions": {
     "targets": [
       "foren_sight_function"

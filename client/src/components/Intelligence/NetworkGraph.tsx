@@ -26,7 +26,7 @@ interface NetworkGraphProps {
 }
 
 const nodeColors: Record<string, string> = {
-  case: '#7C3AED',    // Brand Purple
+  case: '#1E3A8A',    // Brand Blue
   officer: '#2563EB', // Blue
   victim: '#F97316',  // Orange
   accused: '#DC2626', // Red
@@ -123,12 +123,12 @@ const getPortsForPosition = (nodeX: number, nodeY: number, centerX = 500, center
 
 const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodesData, edgesData }) => {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
+  const isDark = theme.palette.mode as any === 'dark';
 
   const [layoutMode, setLayoutMode] = useState<'LR' | 'TB' | 'Radial'>('LR');
 
   const handleLayoutChange = (
-    event: React.MouseEvent<HTMLElement>,
+    _event: React.MouseEvent<HTMLElement>,
     newLayout: 'LR' | 'TB' | 'Radial' | null,
   ) => {
     if (newLayout !== null) {
@@ -253,10 +253,10 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodesData, edgesData }) => 
               fontSize: '0.75rem',
               color: 'text.secondary',
               '&.Mui-selected': {
-                bgcolor: isDark ? 'rgba(124, 58, 237, 0.16)' : 'rgba(124, 58, 237, 0.08)',
+                bgcolor: isDark ? 'rgba(56, 189, 248, 0.16)' : 'rgba(2, 132, 199, 0.08)',
                 color: 'primary.main',
                 '&:hover': {
-                  bgcolor: isDark ? 'rgba(124, 58, 237, 0.24)' : 'rgba(124, 58, 237, 0.12)',
+                  bgcolor: isDark ? 'rgba(56, 189, 248, 0.24)' : 'rgba(2, 132, 199, 0.12)',
                 }
               }
             }

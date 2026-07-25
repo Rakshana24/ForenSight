@@ -264,7 +264,7 @@ const renderVisualTimeline = (status: string, events: { date: string; descriptio
           top: 0,
           bottom: 0,
           width: '2px',
-          bgcolor: isClosed ? '#cbd5e1' : '#bfdbfe',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : (isClosed ? '#cbd5e1' : '#bfdbfe'),
           zIndex: 1
         }}
       />
@@ -294,7 +294,7 @@ const renderVisualTimeline = (status: string, events: { date: string; descriptio
                 boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.2)'
               },
               '&:hover .timeline-card': {
-                bgcolor: '#f1f5f9',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
                 transform: 'translateX(4px)'
               }
             }}
@@ -310,7 +310,7 @@ const renderVisualTimeline = (status: string, events: { date: string; descriptio
                 height: '10px',
                 borderRadius: '50%',
                 bgcolor: dotColor,
-                border: '3px solid #FFFFFF',
+                border: (theme) => `3px solid ${theme.palette.mode === 'dark' ? '#181824' : '#FFFFFF'}`,
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 zIndex: 2,
                 transition: 'all 0.2s ease-in-out'
@@ -321,8 +321,9 @@ const renderVisualTimeline = (status: string, events: { date: string; descriptio
             <Box
               className="timeline-card"
               sx={{
-                bgcolor: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
                 borderRadius: 1.5,
                 p: 1.5,
                 transition: 'all 0.2s ease-in-out',
@@ -335,14 +336,18 @@ const renderVisualTimeline = (status: string, events: { date: string; descriptio
                 variant="caption"
                 sx={{
                   fontWeight: 'bold',
-                  color: isDateAvailable ? (isClosed ? '#475569' : '#1d4ed8') : '#64748b',
+                  color: (theme) => isDateAvailable 
+                    ? (isClosed 
+                        ? (theme.palette.mode === 'dark' ? 'text.secondary' : '#475569') 
+                        : (theme.palette.mode === 'dark' ? 'primary.light' : '#1d4ed8'))
+                    : 'text.disabled',
                   display: 'block',
                   mb: 0.5
                 }}
               >
                 {ev.date}
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: '500', color: '#1e293b' }}>
+              <Typography variant="body2" sx={{ fontWeight: '500', color: 'text.primary' }}>
                 {ev.description}
               </Typography>
             </Box>
@@ -476,9 +481,10 @@ const renderInteractiveTimeline = (
           pl: 4.5,
           pr: 1.5,
           py: 1.5,
-          border: '1px solid #e2e8f0',
+          border: '1px solid',
+          borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
           borderRadius: 2,
-          bgcolor: '#f8fafc',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? '#0F0F13' : '#f8fafc',
           scrollBehavior: 'smooth'
         }}
       >
@@ -489,7 +495,7 @@ const renderInteractiveTimeline = (
             top: '20px',
             bottom: '20px',
             width: '2px',
-            bgcolor: isClosed ? '#cbd5e1' : '#bfdbfe',
+            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : (isClosed ? '#cbd5e1' : '#bfdbfe'),
             zIndex: 1
           }}
         />
@@ -524,7 +530,7 @@ const renderInteractiveTimeline = (
                   height: isActive ? '12px' : '10px',
                   borderRadius: '50%',
                   bgcolor: dotColor,
-                  border: '3px solid #FFFFFF',
+                  border: (theme) => `3px solid ${theme.palette.mode === 'dark' ? '#0F0F13' : '#FFFFFF'}`,
                   boxShadow: isActive ? '0 0 0 3px rgba(245, 158, 11, 0.4)' : '0 1px 3px rgba(0,0,0,0.15)',
                   zIndex: 2,
                   animation: isActive ? 'pulseTimeline 2s infinite' : 'none',
@@ -542,13 +548,19 @@ const renderInteractiveTimeline = (
                   width: '100%',
                   cursor: 'pointer',
                   p: 2,
-                  bgcolor: isActive ? '#eff6ff' : '#ffffff',
-                  border: isActive ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                  bgcolor: (theme) => isActive 
+                    ? (theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#eff6ff') 
+                    : (theme.palette.mode === 'dark' ? '#181824' : '#ffffff'),
+                  border: (theme) => isActive 
+                    ? `2px solid ${theme.palette.mode === 'dark' ? '#38BDF8' : '#3b82f6'}` 
+                    : `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
                   borderRadius: 2,
                   boxShadow: isActive ? '0 4px 12px rgba(59, 130, 246, 0.08)' : '0 1px 2px rgba(0,0,0,0.02)',
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
-                    bgcolor: isActive ? '#eff6ff' : '#f8fafc',
+                    bgcolor: (theme) => isActive 
+                      ? (theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.12)' : '#eff6ff') 
+                      : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc'),
                     transform: 'translateX(4px)',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
                   }
@@ -561,7 +573,7 @@ const renderInteractiveTimeline = (
                         variant="caption"
                         sx={{
                           fontWeight: 'bold',
-                          color: '#64748b',
+                          color: 'text.secondary',
                           letterSpacing: '0.5px'
                         }}
                       >
@@ -583,25 +595,25 @@ const renderInteractiveTimeline = (
                         </Box>
                       )}
                     </Box>
-                    <Typography variant="body2" sx={{ fontWeight: '600', color: '#0f172a' }}>
+                    <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.primary' }}>
                       {ms.title}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                  <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.9rem' }}>
                     {isExpanded ? '▲' : '▼'}
                   </Typography>
                 </Box>
 
                 {isExpanded && (
-                  <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
-                    <Typography variant="body2" sx={{ color: '#334155', mb: 1.5, lineHeight: 1.5 }}>
+                  <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, lineHeight: 1.5 }}>
                       {ms.description}
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                       <Box
                         sx={{
-                          bgcolor: '#f1f5f9',
-                          color: '#475569',
+                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9',
+                          color: (theme) => theme.palette.mode === 'dark' ? 'text.secondary' : '#475569',
                           px: 1,
                           py: 0.5,
                           borderRadius: 0.5,
@@ -613,8 +625,12 @@ const renderInteractiveTimeline = (
                       </Box>
                       <Box
                         sx={{
-                          bgcolor: ms.status === 'Completed' ? '#dcfce7' : '#fef3c7',
-                          color: ms.status === 'Completed' ? '#15803d' : '#b45309',
+                          bgcolor: (theme) => ms.status === 'Completed' 
+                            ? (theme.palette.mode === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7') 
+                            : (theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7'),
+                          color: (theme) => ms.status === 'Completed' 
+                            ? (theme.palette.mode === 'dark' ? '#34d399' : '#15803d') 
+                            : (theme.palette.mode === 'dark' ? '#fbbf24' : '#b45309'),
                           px: 1,
                           py: 0.5,
                           borderRadius: 0.5,
@@ -748,27 +764,34 @@ const renderSimilarCasesCard = (data: SimilarCasesData) => {
             <Card
               key={idx}
               sx={{
-                border: '1px solid #e2e8f0',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff',
                 borderRadius: 2,
                 boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                 transition: 'all 0.2s',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                  boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 6px -1px rgba(0,0,0,0.05)',
+                  borderColor: 'primary.main'
                 }
               }}
             >
               <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                   <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                       {c.caseTitle}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                       <Box
                         sx={{
-                          bgcolor: c.outcome.toLowerCase().includes('convicted') ? '#dcfce7' : '#eff6ff',
-                          color: c.outcome.toLowerCase().includes('convicted') ? '#15803d' : '#1e40af',
+                          bgcolor: (theme) => c.outcome.toLowerCase().includes('convicted') 
+                            ? (theme.palette.mode === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7') 
+                            : (theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.15)' : '#eff6ff'),
+                          color: (theme) => c.outcome.toLowerCase().includes('convicted') 
+                            ? (theme.palette.mode === 'dark' ? '#34d399' : '#15803d') 
+                            : (theme.palette.mode === 'dark' ? '#38bdf8' : '#1e40af'),
                           px: 1,
                           py: 0.25,
                           borderRadius: 0.5,
@@ -811,7 +834,7 @@ const renderSimilarCasesCard = (data: SimilarCasesData) => {
                   {c.reasons.map((r, rIdx) => (
                     <Box key={rIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <span style={{ color: scoreBg, fontSize: '0.85rem' }}>✓</span>
-                      <Typography variant="body2" sx={{ color: '#334155' }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {r}
                       </Typography>
                     </Box>
@@ -824,11 +847,17 @@ const renderSimilarCasesCard = (data: SimilarCasesData) => {
       </Box>
 
       {data.observation && (
-        <Box sx={{ bgcolor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 2, p: 2.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#b45309', mb: 1 }}>
+        <Box sx={{ 
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb', 
+          border: '1px solid',
+          borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', 
+          borderRadius: 2, 
+          p: 2.5 
+        }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? '#fbbf24' : '#b45309', mb: 1 }}>
             OVERALL AI OBSERVATION
           </Typography>
-          <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
+          <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6 }}>
             {data.observation}
           </Typography>
         </Box>
@@ -950,19 +979,22 @@ const renderInvestigationLeadsCard = (data: InvestigationLeadsData) => {
             <Card
               key={idx}
               sx={{
-                border: '1px solid #e2e8f0',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff',
                 borderRadius: 2,
                 boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                 transition: 'all 0.2s',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                  boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 6px -1px rgba(0,0,0,0.05)',
+                  borderColor: 'primary.main'
                 }
               }}
             >
               <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                     {l.leadTitle}: {l.action}
                   </Typography>
                   <Box
@@ -989,7 +1021,7 @@ const renderInvestigationLeadsCard = (data: InvestigationLeadsData) => {
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5, letterSpacing: '0.5px' }}>
                       RATIONALE / REASON
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.5 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
                       {l.reason || 'No rationale provided.'}
                     </Typography>
                   </Grid>
@@ -998,7 +1030,7 @@ const renderInvestigationLeadsCard = (data: InvestigationLeadsData) => {
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5, letterSpacing: '0.5px' }}>
                       EXPECTED IMPACT
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.5 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
                       {l.impact || 'No expected impact provided.'}
                     </Typography>
                   </Grid>
@@ -1010,11 +1042,17 @@ const renderInvestigationLeadsCard = (data: InvestigationLeadsData) => {
       </Box>
 
       {data.overallRecommendation && (
-        <Box sx={{ bgcolor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 2, p: 2.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#6d28d9', mb: 1 }}>
+        <Box sx={{ 
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#f0f9ff', 
+          border: '1px solid',
+          borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.2)' : '#bae6fd',
+          borderRadius: 2, 
+          p: 2.5 
+        }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#172554', mb: 1 }}>
             OVERALL AI RECOMMENDATION
           </Typography>
-          <Typography variant="body2" sx={{ color: '#5b21b6', lineHeight: 1.6 }}>
+          <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6 }}>
             {data.overallRecommendation}
           </Typography>
         </Box>
@@ -1213,7 +1251,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
 
   if (isTimeline) {
     const timeline = parseInvestigationTimeline(msg.message);
-    const cardBorderColor = timeline.status.toLowerCase().includes('closed') ? '#e5e7eb' : '#bfdbfe';
+    const cardBorderColor = (theme: any) => theme.palette.mode === 'dark' 
+      ? 'rgba(255, 255, 255, 0.08)' 
+      : (timeline.status.toLowerCase().includes('closed') ? '#e5e7eb' : '#bfdbfe');
     const headerGradient = timeline.status.toLowerCase().includes('closed')
       ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)'
       : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)';
@@ -1231,7 +1271,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
           sx={{
             width: '100%',
             maxWidth: '85%',
-            border: `1px solid ${cardBorderColor}`,
+            border: `1px solid`,
+            borderColor: cardBorderColor,
+            bgcolor: 'background.paper',
             borderRadius: 2,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             overflow: 'hidden'
@@ -1301,7 +1343,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             {showInteractive ? (
               /* Interactive Timeline Section */
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 2 }}>
                   INTERACTIVE LIFE CYCLE
                 </Typography>
                 {renderInteractiveTimeline(
@@ -1316,7 +1358,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             ) : (
               /* Visual Timeline Section */
               <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 2 }}>
                   CHRONOLOGICAL LIFE CYCLE
                 </Typography>
                 {renderVisualTimeline(timeline.status, timeline.events)}
@@ -1326,11 +1368,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             <Divider sx={{ mb: 3 }} />
 
             {/* Overall AI Summary */}
-            <Box sx={{ bgcolor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 1.5, p: 2.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 1 }}>
+            <Box sx={{ 
+              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#eff6ff', 
+              border: '1px solid',
+              borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.2)' : '#bfdbfe',
+              borderRadius: 1.5, 
+              p: 2.5 
+            }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1e3a8a', mb: 1 }}>
                 OVERALL TIMELINE SUMMARY
               </Typography>
-              <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              <Typography variant="body2" sx={{ color: (theme) => theme.palette.mode === 'dark' ? '#bae6fd' : '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                 {timeline.overallSummary || 'Timeline based on available investigation records.'}
               </Typography>
             </Box>
@@ -1357,7 +1405,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
           sx={{
             width: '100%',
             maxWidth: '85%',
-            border: '1px solid #bfdbfe',
+            border: '1px solid',
+            borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#bfdbfe',
+            bgcolor: 'background.paper',
             borderRadius: 2,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             overflow: 'hidden'
@@ -1385,20 +1435,21 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             {/* 1. Case Overview Section */}
             <Box
               sx={{
-                bgcolor: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
                 borderRadius: 1.5,
                 p: 2,
                 mb: 3
               }}
             >
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1.5 }}>
                 CASE OVERVIEW
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">Case Number</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1e3a8a' }}>{summary.caseNumber}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1e3a8a' }}>{summary.caseNumber}</Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">Crime Type</Typography>
@@ -1406,16 +1457,16 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">Investigation Status</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#10b981' }}>{summary.investigationStatus}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? '#34d399' : '#10b981' }}>{summary.investigationStatus}</Typography>
                 </Grid>
               </Grid>
             </Box>
 
             {/* 2. Short Summary Callout */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
               SUMMARY
             </Typography>
-            <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.6, mb: 3 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 3 }}>
               {summary.summaryText || 'Information not available.'}
             </Typography>
 
@@ -1426,7 +1477,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <PersonIcon color="primary" fontSize="small" />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                     VICTIM DETAILS
                   </Typography>
                 </Box>
@@ -1436,7 +1487,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <PersonIcon color="error" fontSize="small" />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                     CRIMINAL DETAILS
                   </Typography>
                 </Box>
@@ -1447,7 +1498,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             <Divider sx={{ mb: 2.5 }} />
 
             {/* 4. Investigation Context */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1.5 }}>
               INVESTIGATION DETAILS
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -1484,7 +1535,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             <Divider sx={{ mb: 2.5 }} />
 
             {/* 5. Key Findings */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1.5 }}>
               KEY FINDINGS
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
@@ -1505,16 +1556,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             {/* 6. Current Status */}
             <Box
               sx={{
-                bgcolor: '#eff6ff',
-                border: '1px solid #bfdbfe',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#eff6ff',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.2)' : '#bfdbfe',
                 borderRadius: 1.5,
                 p: 2
               }}
             >
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1e3a8a', mb: 0.5 }}>
                 CURRENT STATUS
               </Typography>
-              <Typography variant="body2" sx={{ color: '#1e40af', fontWeight: 'bold' }}>
+              <Typography variant="body2" sx={{ color: (theme) => theme.palette.mode === 'dark' ? '#bae6fd' : '#1e40af', fontWeight: 'bold' }}>
                 {summary.currentStatus || 'Information not available.'}
               </Typography>
             </Box>
@@ -1539,8 +1591,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
         <Box
           sx={{
             maxWidth: '75%',
-            backgroundColor: '#fffbeb',
-            border: '1px solid #fef3c7',
+            backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
+            border: '1px solid',
+            borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
             borderRadius: 2,
             p: 2.5,
             display: 'flex',
@@ -1551,10 +1604,10 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
         >
           <WarningIcon sx={{ color: '#d97706' }} />
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#b45309', mb: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? '#fbbf24' : '#b45309', mb: 0.5 }}>
               AI Investigation Assessment Mismatch
             </Typography>
-            <Typography variant="body2" sx={{ color: '#d97706' }}>
+            <Typography variant="body2" sx={{ color: (theme) => theme.palette.mode === 'dark' ? 'text.secondary' : '#d97706' }}>
               Case status unavailable. Please ensure a case status has been established before performing this assessment.
             </Typography>
           </Box>
@@ -1570,7 +1623,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
 
   if (isAssessment) {
     const assess = parseCaseAssessment(msg.message);
-    const cardBorderColor = assess.isClosed ? '#e5e7eb' : '#bfdbfe';
+    const cardBorderColor = (theme: any) => theme.palette.mode === 'dark' 
+      ? 'rgba(255, 255, 255, 0.08)' 
+      : (assess.isClosed ? '#e5e7eb' : '#bfdbfe');
     const headerGradient = assess.isClosed 
       ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' 
       : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)';
@@ -1588,7 +1643,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
           sx={{
             width: '100%',
             maxWidth: '85%',
-            border: `1px solid ${cardBorderColor}`,
+            border: `1px solid`,
+            borderColor: cardBorderColor,
+            bgcolor: 'background.paper',
             borderRadius: 2,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
             overflow: 'hidden'
@@ -1631,21 +1688,28 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
           <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
             {/* Overview / Facts Summary */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a', mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
                 CASE OVERVIEW
               </Typography>
-              <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
                 {assess.overview || 'Information not available.'}
               </Typography>
             </Box>
 
             {/* Case Outcome (for closed cases) */}
             {assess.isClosed && (
-              <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderLeft: '4px solid #475569', borderRadius: '0 4px 4px 0' }}>
-                <Typography variant="caption" sx={{ color: '#475569', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              <Box sx={{ 
+                mb: 3, 
+                p: 2, 
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc', 
+                borderLeft: '4px solid', 
+                borderLeftColor: (theme) => theme.palette.mode === 'dark' ? 'primary.main' : '#475569',
+                borderRadius: '0 4px 4px 0' 
+              }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', textTransform: 'uppercase' }}>
                   Case Outcome
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1e293b', mt: 0.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary', mt: 0.5 }}>
                   {assess.outcome}
                 </Typography>
               </Box>
@@ -1659,7 +1723,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <InfoIcon sx={{ color: assess.isClosed ? '#475569' : '#2563eb', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                     KEY FINDINGS
                   </Typography>
                 </Box>
@@ -1683,7 +1747,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                   <>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                       <HelpOutlineIcon sx={{ color: '#ea580c', fontSize: 20 }} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                         INVESTIGATION GAPS
                       </Typography>
                     </Box>
@@ -1704,7 +1768,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                   <>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                       <CheckCircleIcon sx={{ color: '#16a34a', fontSize: 20 }} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                         SUCCESS FACTORS
                       </Typography>
                     </Box>
@@ -1733,7 +1797,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                     <AssignmentTurnedInIcon sx={{ color: '#2563eb', fontSize: 20 }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                       RECOMMENDED NEXT ACTIONS
                     </Typography>
                   </Box>
@@ -1742,7 +1806,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                       assess.actions.map((a, i) => (
                         <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
                           <Typography sx={{ color: '#2563eb', mt: -0.2 }}>•</Typography>
-                          <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: '500' }}>{a}</Typography>
+                          <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: '500' }}>{a}</Typography>
                         </Box>
                       ))
                     ) : (
@@ -1754,7 +1818,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                     <SchoolIcon sx={{ color: '#4b5563', fontSize: 20 }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                       LESSONS LEARNED
                     </Typography>
                   </Box>
@@ -1777,8 +1841,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             {/* Risk / Quality Callout */}
             <Box
               sx={{
-                bgcolor: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
                 borderRadius: 1.5,
                 p: 2,
                 mb: 3
@@ -1823,11 +1888,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
             <Divider sx={{ mb: 3 }} />
 
             {/* Overall AI Assessment */}
-            <Box sx={{ bgcolor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 1.5, p: 2.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 1 }}>
+            <Box sx={{ 
+              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : '#eff6ff', 
+              border: '1px solid',
+              borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.2)' : '#bfdbfe',
+              borderRadius: 1.5, 
+              p: 2.5 
+            }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: (theme) => theme.palette.mode === 'dark' ? 'primary.light' : '#1e3a8a', mb: 1 }}>
                 OVERALL AI ASSESSMENT
               </Typography>
-              <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              <Typography variant="body2" sx={{ color: (theme) => theme.palette.mode === 'dark' ? '#bae6fd' : '#1e40af', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                 {assess.assessment || 'Information not available.'}
               </Typography>
             </Box>
@@ -1843,7 +1914,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
 
   if (isSimilarCases) {
     const data = parseSimilarCases(msg.message);
-    const cardBorderColor = '#e5e7eb';
     const headerGradient = 'linear-gradient(135deg, #b45309 0%, #d97706 100%)';
 
     return (
@@ -1902,8 +1972,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
 
   if (isInvestigationLeads) {
     const data = parseInvestigationLeads(msg.message);
-    const cardBorderColor = '#ddd6fe';
-    const headerGradient = 'linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%)';
+    const headerGradient = 'linear-gradient(135deg, #172554 0%, #1E3A8A 100%)';
 
     return (
       <Box
@@ -1969,13 +2038,12 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg, originalPrompt, audioCache
           maxWidth: '75%',
           backgroundColor: (theme) => 
             isUser 
-              ? (theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.06)')
+              ? (theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.06)')
               : (theme.palette.mode === 'dark' ? '#1E1E2A' : '#F8FAFC'),
           border: '1px solid',
-          borderColor: (theme) =>
-            isUser 
-              ? 'primary.main'
-              : 'divider',
+          borderColor: isUser 
+            ? 'primary.main'
+            : 'divider',
           borderRadius: 2,
           p: 2,
           boxShadow: 'none',

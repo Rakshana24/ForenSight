@@ -35,16 +35,16 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
         mb: 1,
         py: 1.2,
         px: 2,
-        backgroundColor: isActive ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
+        backgroundColor: isActive ? ((theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.06)') : 'transparent',
         border: '1px solid',
         borderColor: isActive ? 'primary.main' : 'divider',
         borderLeft: '4px solid',
         borderLeftColor: isActive ? 'primary.main' : 'text.disabled',
         boxShadow: isActive ? '0 1px 2px 0 rgba(0,0,0,0.05)' : 'none',
         '&.Mui-selected': {
-          backgroundColor: 'rgba(124, 58, 237, 0.08)',
+          backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.06)',
           '&:hover': {
-            backgroundColor: 'rgba(124, 58, 237, 0.12)',
+            backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(2, 132, 199, 0.09)',
           }
         },
         '&:hover': {
@@ -72,7 +72,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({ convo, isActive, on
                   height: 18,
                   fontSize: '0.65rem',
                   fontWeight: 'bold',
-                  bgcolor: isActive ? 'rgba(124, 58, 237, 0.15)' : 'action.selected',
+                  bgcolor: isActive ? ((theme) => theme.palette.mode === 'dark' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.09)') : 'action.selected',
                   color: isActive ? 'primary.main' : 'text.secondary',
                   borderRadius: '3px',
                   px: 0.5,
