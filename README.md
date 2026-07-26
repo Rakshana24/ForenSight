@@ -66,7 +66,8 @@ ForenSight is a web application that helps law enforcement investigators search 
 3.  **Search Case Files**: Input queries (e.g., *"Show details of Case ID 100"*) via text or voice.
 4.  **Run AI Analyses**: Select report buttons in the toolbar to generate summaries or timelines.
 5.  **Explore Networks**: Open the Relationship Graph to search suspects and view accomplice maps.
-6.  **Export PDF**: Click the download icon in the chat view to save chat transcripts.
+6.  **Analyze Crime Patterns**: Open the Analytics page to view geographic hotspots, seasonal crime spikes, and demographic charts.
+7.  **Export PDF**: Click the download icon in the chat view to save chat transcripts.
 
 ---
 
@@ -78,23 +79,6 @@ ForenSight is a web application that helps law enforcement investigators search 
 *   *“Generate case summary”*
 *   *“Generate timeline”*
 *   *“Recommend investigation leads”*
-
----
-
-## Screenshots
-
-### Dashboard
-![Dashboard Placeholder](https://placehold.co/1200x800/181824/FFF?text=ForenSight+Dashboard+Dashboard)
-
-### Investigation Chat
-![Chat Placeholder](https://placehold.co/1200x800/181824/FFF?text=AI+Chat+Workspace+with+Report+Panels)
-
-### Crime Analytics
-![Analytics Placeholder](https://placehold.co/1200x800/181824/FFF?text=Recharts+Analytics+Dashboard)
-
-### Relationship Graph
-![Relationship Graph Placeholder](https://placehold.co/1200x800/181824/FFF?text=React+Flow+Accomplice+Graph)
-
 ---
 
 ## License
