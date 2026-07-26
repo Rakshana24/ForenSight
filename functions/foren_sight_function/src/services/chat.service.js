@@ -809,6 +809,10 @@ class ChatService {
       }
     }
 
+    // Apply the clean formatter to normal chat responses
+    const { formatResponseText } = require('../utils/responseFormatter');
+    finalAnswer = formatResponseText(finalAnswer);
+
     // Save to conversation history if active
     if (conversationId && convoRepo && convoService) {
       try {

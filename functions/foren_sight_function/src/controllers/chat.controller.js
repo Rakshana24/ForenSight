@@ -36,7 +36,6 @@ class ChatController {
       const responseText = await this.chatService.processChat(message, baseUrl, sessionId, req, conversationId);
 
       let audioBase64 = null;
-      let cleanedResponseText = responseText;
       if (isVoiceInput) {
         // Condition 2: Normal chatbot conversation
         const lowerPrompt = (message || '').trim().toLowerCase();
@@ -54,8 +53,8 @@ class ChatController {
         } catch (e) {}
 
         if (!isSpecialCommand) {
-          // Clean the displayed text and voice payload of any markdown markers
-          cleanedResponseText = responseText
+          // Clean only the voice payload of any markdown markers for natural voice synthesis
+          const voicePayload = responseText
             .replace(/\*\*/g, '')          // Remove bold markers (**)
             .replace(/\*/g, '')            // Remove italic markers (*)
             .replace(/#/g, '')             // Remove headers (#)
@@ -68,7 +67,7 @@ class ChatController {
           try {
             const SpeechController = require('./speech.controller');
             const speechController = new SpeechController();
-            const audioBuffer = await speechController.synthesizeTTSBuffer(req, cleanedResponseText);
+            const audioBuffer = await speechController.synthesizeTTSBuffer(req, voicePayload);
             if (audioBuffer && audioBuffer.length > 0) {
               audioBase64 = `data:audio/wav;base64,${audioBuffer.toString('base64')}`;
               try {
@@ -85,7 +84,7 @@ class ChatController {
       }
 
       return sendJSON(res, 200, {
-        response: cleanedResponseText,
+        response: responseText,
         audio: audioBase64
       });
     } catch (error) {
